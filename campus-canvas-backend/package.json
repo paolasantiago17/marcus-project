@@ -1,0 +1,13 @@
+{
+  "name": "campus-canvas-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "node setup.mjs",
+    "schema": "node setup.mjs --schema"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.0",
+    "pg": "^8.16.0"
+  }
+}
