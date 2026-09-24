@@ -25,18 +25,18 @@ export function notices(root) {
       <div class="topbar" style="padding-bottom:20px;">
         <span style="font-family:'Bodoni Moda',serif; font-size:12px; letter-spacing:.24em; text-transform:uppercase;">Notices</span>
         <div style="display:flex; align-items:center; gap:8px;">
-          ${unread.length ? `<span style="height:24px; min-width:24px; padding:0 8px; border-radius:12px; background:#C4543A; color:#FFFDF8; font-size:11px; font-weight:500; display:flex; align-items:center; justify-content:center;">${unread.length}</span>
-          <span style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#8C8375;">Unread</span>` : `<span style="font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#8C8375;">All read</span>`}
+          ${unread.length ? `<span style="height:24px; min-width:24px; padding:0 8px; border-radius:12px; background:#C4543A; color:#FFFDF8; font-size:12.5px; font-weight:500; display:flex; align-items:center; justify-content:center;">${unread.length}</span>
+          <span style="font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:#8C8375;">Unread</span>` : `<span style="font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:#8C8375;">All read</span>`}
           ${avatarBtn(p, unread.length > 0)}
         </div>
       </div>
       <div class="scroll" style="padding:0 24px;">
-        ${!all.length ? `<p style="color:#8C8375; font-size:13.5px; padding:40px 0; text-align:center;">Nothing published yet.</p>` : ''}
+        ${!all.length ? `<p style="color:#8C8375; font-size:15px; padding:40px 0; text-align:center;">Nothing published yet.</p>` : ''}
         ${primary ? noticeCard(primary, !read.has(primary.id), true) : ''}
         ${rest.map((n) => noticeCard(n, !read.has(n.id), false)).join('')}
         <div style="border-radius:18px; background:#F2ECE0; padding:20px; margin-bottom:22px;">
           <p class="eyebrow" style="letter-spacing:.20em;">Read earlier</p>
-          <p style="margin:0; font-size:13.5px; font-weight:300; line-height:1.7; color:#4A443A;">Voting is open · Submissions close October 30 · Welcome to Campus Canvas</p>
+          <p style="margin:0; font-size:15px; font-weight:300; line-height:1.7; color:#4A443A;">Voting is open · Submissions close October 30 · Welcome to Campus Canvas</p>
         </div>
       </div>
       <div style="padding:14px 24px 0;">${bottomNav('notices')}</div>
@@ -55,13 +55,13 @@ function noticeCard(n, isUnread, big) {
       <div style="padding:${big ? '18px 20px 20px' : '20px'};">
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
           ${isUnread ? '<span style="width:7px; height:7px; border-radius:4px; background:#C4543A; display:block;"></span>' : ''}
-          <span style="font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:#A6842C;">${esc(n.category)}</span>
+          <span style="font-size:11.5px; letter-spacing:.18em; text-transform:uppercase; color:#A6842C;">${esc(n.category)}</span>
         </div>
         <p class="h-serif" style="font-size:20px; line-height:1.25; margin-bottom:8px;">${esc(n.title)}</p>
-        <p style="margin:0 0 16px; font-size:13.5px; font-weight:300; line-height:1.65; color:#4A443A;">${esc(n.body)}</p>
+        <p style="margin:0 0 16px; font-size:15px; font-weight:300; line-height:1.65; color:#4A443A;">${esc(n.body)}</p>
         <div style="display:flex; align-items:center; justify-content:space-between;">
-          <span style="font-size:11.5px; font-weight:300; color:#8C8375;">${timeAgo(n.publishedAt)}</span>
-          ${n.ctaLabel ? `<span style="height:38px; padding:0 18px; border-radius:19px; background:#1B1916; color:#FBF8F2; display:flex; align-items:center; font-size:11px; font-weight:500; letter-spacing:.14em; text-transform:uppercase;">${esc(n.ctaLabel)}</span>` : ''}
+          <span style="font-size:13px; font-weight:300; color:#8C8375;">${timeAgo(n.publishedAt)}</span>
+          ${n.ctaLabel ? `<span style="height:38px; padding:0 18px; border-radius:19px; background:#1B1916; color:#FBF8F2; display:flex; align-items:center; font-size:12.5px; font-weight:500; letter-spacing:.14em; text-transform:uppercase;">${esc(n.ctaLabel)}</span>` : ''}
         </div>
       </div>
     </div>`;
@@ -80,8 +80,8 @@ export function noticeDetail(root, { parts }) {
       </div>
       <div class="scroll" style="padding:26px 24px 0;">
         <h2 class="h-serif" style="font-size:30px; line-height:1.1; margin-bottom:10px;">${esc(n.title)}</h2>
-        <p style="margin:0 0 24px; font-size:12.5px; font-weight:300; color:#8C8375;">${timeAgo(n.publishedAt)}</p>
-        <p style="margin:0 0 28px; font-size:14.5px; font-weight:300; line-height:1.8; color:#4A443A;">${esc(n.body)}</p>
+        <p style="margin:0 0 24px; font-size:14px; font-weight:300; color:#8C8375;">${timeAgo(n.publishedAt)}</p>
+        <p style="margin:0 0 28px; font-size:16px; font-weight:300; line-height:1.8; color:#4A443A;">${esc(n.body)}</p>
         ${n.ctaLabel ? `<a href="${safeUrl(n.url)}" target="_blank" rel="noopener" class="btn btn-outline" style="text-decoration:none; margin-bottom:16px;">${esc(n.ctaLabel)}</a>` : ''}
       </div>
     </div>`;

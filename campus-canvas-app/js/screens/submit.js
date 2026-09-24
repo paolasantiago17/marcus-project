@@ -30,7 +30,7 @@ export function submit(root) {
       <div class="topbar" style="padding-bottom:16px;">
         <span style="font-family:'Bodoni Moda',serif; font-size:12px; letter-spacing:.24em; text-transform:uppercase;">Submit</span>
         <div style="display:flex; align-items:center; gap:14px;">
-          <span style="font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:#8C8375;">${filledCount} of 3 added</span>
+          <span style="font-size:12.5px; letter-spacing:.16em; text-transform:uppercase; color:#8C8375;">${filledCount} of 3 added</span>
           ${avatarBtn(Store.currentParticipant(), Store.unreadCount() > 0)}
         </div>
       </div>
@@ -38,7 +38,7 @@ export function submit(root) {
         ${[0, 1, 2].map((i) => `<span style="flex:1; height:3px; border-radius:2px; background:${slots[i].url ? '#A6842C' : 'rgba(27,25,22,.14)'};"></span>`).join('')}
       </div>
       <div class="scroll" style="padding:0 24px;">
-        <p style="margin:0 0 14px; font-size:11px; font-weight:300; color:#8C8375;"><span style="color:#C4543A;">*</span> Photo, title and description are all required for each slot.</p>
+        <p style="margin:0 0 14px; font-size:12.5px; font-weight:300; color:#8C8375;"><span style="color:#C4543A;">*</span> Photo, title and description are all required for each slot.</p>
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:26px;">
           ${[0, 1, 2].map((i) => {
             const s = slots[i];
@@ -50,7 +50,7 @@ export function submit(root) {
             }
             return `<div class="slot" data-slot="${i}" style="aspect-ratio:.78; border-radius:14px; border:1px dashed rgba(27,25,22,.28); background:#F4EFE5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; ${i === activeSlot ? 'outline:2px solid #A6842C; outline-offset:2px;' : ''}">
               <span style="width:26px; height:26px; border-radius:13px; border:1px solid #A6842C; display:block;"></span>
-              <span style="font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#8C8375;">Slot ${i + 1}</span>
+              <span style="font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#8C8375;">Slot ${i + 1}</span>
             </div>`;
           }).join('')}
         </div>
@@ -70,11 +70,11 @@ export function submit(root) {
         <div style="border-radius:16px; background:#FFFFFF; border:1px solid rgba(27,25,22,.12); padding:16px 18px 12px; margin-bottom:8px;">
           <textarea id="desc-input" rows="4" placeholder="Tell us why this photo matters…" style="border:none; padding:0; margin-bottom:14px;">${esc(active.description)}</textarea>
           <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(27,25,22,.08); padding-top:10px;">
-            <span style="font-size:11.5px; font-weight:300; color:#8C8375;">Photo ${activeSlot + 1} of 3</span>
-            <span id="word-count" style="font-size:11.5px; font-weight:400; color:#2E6B5C;">${wordCount(active.description)} / ${MAX_WORDS} words</span>
+            <span style="font-size:13px; font-weight:300; color:#8C8375;">Photo ${activeSlot + 1} of 3</span>
+            <span id="word-count" style="font-size:13px; font-weight:400; color:#2E6B5C;">${wordCount(active.description)} / ${MAX_WORDS} words</span>
           </div>
         </div>
-        <p style="margin:0 0 26px; font-size:12px; font-weight:300; color:#8C8375;">JPEG, PNG or HEIC. We check every file before your entry is accepted.</p>
+        <p style="margin:0 0 26px; font-size:13.5px; font-weight:300; color:#8C8375;">JPEG, PNG or HEIC. We check every file before your entry is accepted.</p>
       </div>
       <div style="padding:14px 24px 0;">
         <button class="btn ${allValid ? 'btn-gold' : 'btn-flat'}" id="submit-all" ${allValid ? '' : 'disabled'}>Submit all three</button>
@@ -162,21 +162,21 @@ export function submitted(root) {
       <div class="scroll" style="padding:56px 28px 0; text-align:center;">
         <span style="width:60px; height:60px; border-radius:30px; background:#A6842C; display:inline-block; margin-bottom:34px;"></span>
         <h2 class="h-serif" style="font-size:34px; line-height:1.1; margin-bottom:16px; color:#F7F2E7;">Your three are in.</h2>
-        <p style="margin:0 auto 36px; max-width:280px; font-size:14.5px; font-weight:300; line-height:1.7; color:#CFC7B6;">All three photographs and descriptions saved. An ArtUP curator reviews every submission before it enters voting.</p>
+        <p style="margin:0 auto 36px; max-width:280px; font-size:16px; font-weight:300; line-height:1.7; color:#CFC7B6;">All three photographs and descriptions saved. An ArtUP curator reviews every submission before it enters voting.</p>
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:36px;">
           ${photos.map((img) => `<div style="width:100%; aspect-ratio:.8; border-radius:12px; ${photoStyle(img.photo)} display:block;"></div>`).join('')}
         </div>
         <div style="border-radius:18px; border:1px solid rgba(243,238,227,.20); padding:22px; text-align:left;">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-            <span style="font-size:10.5px; letter-spacing:.20em; text-transform:uppercase; color:#9A8F79;">Entry earned</span>
+            <span style="font-size:12px; letter-spacing:.20em; text-transform:uppercase; color:#9A8F79;">Entry earned</span>
             <span class="h-serif" style="font-size:26px; color:#A6842C;">+9 pts</span>
           </div>
-          <p style="margin:0; font-size:13px; font-weight:300; line-height:1.6; color:#CFC7B6;">Three photos, three descriptions. Points carry into voting — 20 unlocks your first raffle entry.</p>
+          <p style="margin:0; font-size:14.5px; font-weight:300; line-height:1.6; color:#CFC7B6;">Three photos, three descriptions. Points carry into voting — 20 unlocks your first raffle entry.</p>
         </div>
       </div>
       <div style="padding:20px 28px 34px;">
         <button class="btn btn-gold-dark" id="start-voting">Start voting</button>
-        <p style="margin:14px 0 0; text-align:center; font-size:12px; font-weight:300; color:#9A8F79;">We'll notify you when your photos are reviewed.</p>
+        <p style="margin:14px 0 0; text-align:center; font-size:13.5px; font-weight:300; color:#9A8F79;">We'll notify you when your photos are reviewed.</p>
       </div>
     </div>`;
   root.querySelector('#start-voting').addEventListener('click', () => Router.go('#/vote'));

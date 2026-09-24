@@ -103,7 +103,9 @@ async function prepareUpload(file) {
   try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, MAX_UPLOAD_EDGE / Math.max(bitmap.width, bitmap.height));
-    if (scale === 1 && file.size < 2_500_000 && /jpe?g/i.test(file.type)) return { blob: file, ext: 'jpg', type: 'image/jpeg' };
+    // Only light JPEGs go up untouched; heavier ones are re-saved even when
+    // they're already small enough, so voting cards stay quick to load.
+    if (scale === 1 && file.size < 1_000_000 && /jpe?g/i.test(file.type)) return { blob: file, ext: 'jpg', type: 'image/jpeg' };
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);

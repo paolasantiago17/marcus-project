@@ -65,11 +65,27 @@ export function busy(button, label) {
   return () => { button.disabled = wasDisabled; button.innerHTML = original; };
 }
 
+// Starts downloading photos before they're shown, so the next voting card
+// appears instantly instead of loading after each vote. Only the most recent
+// few are held on to; the browser cache keeps the files themselves.
+const warmed = new Map();
+export function preloadPhotos(images) {
+  for (const img of images) {
+    const url = img && img.photo;
+    if (!url || url.startsWith('linear-gradient') || warmed.has(url)) continue;
+    const el = new Image();
+    el.decoding = 'async';
+    el.src = url;
+    warmed.set(url, el);
+    if (warmed.size > 8) warmed.delete(warmed.keys().next().value);
+  }
+}
+
 export function statusScreen(root, title, body) {
   root.innerHTML = `
     <div class="screen" style="align-items:center; justify-content:center; text-align:center; padding:40px 32px;">
       <img src="assets/monogram.png" alt="ArtUP" style="height:28px; margin-bottom:24px;" />
       <h2 class="h-serif" style="font-size:26px; margin-bottom:10px;">${esc(title)}</h2>
-      <p style="margin:0; font-size:14px; font-weight:300; line-height:1.6; color:#5B5449;">${esc(body)}</p>
+      <p style="margin:0; font-size:15.5px; font-weight:300; line-height:1.6; color:#5B5449;">${esc(body)}</p>
     </div>`;
 }
