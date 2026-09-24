@@ -14,19 +14,19 @@ export function landing(root) {
   // where the photo runs into the text; it is fully dark by 85%, above the
   // text panel's top edge.
   root.innerHTML = `
-    <div class="screen" style="background:#15130F;">
-      <div class="scroll" style="display:flex; flex-direction:column; color:#F3EEE3;">
-        <div style="position:relative; height:342px; height:max(342px, calc(100svh - 400px)); overflow:hidden; flex:none;">
+    <div class="screen landing" style="background:#15130F;">
+      <div class="scroll landing-scroll" style="display:flex; flex-direction:column; color:#F3EEE3;">
+        <div class="landing-hero" style="position:relative; height:342px; height:max(342px, calc(100svh - 400px)); overflow:hidden; flex:none;">
           <div style="position:absolute; inset:0; ${photoStyle(SEED_PHOTOS[0])}"></div>
           <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(21,19,15,.45) 0%, rgba(21,19,15,0) 22%, rgba(21,19,15,0) 58%, rgba(21,19,15,.55) 72%, #15130F 85%);"></div>
           <img src="assets/monogram-transparent.png" alt="ArtUP" style="position:absolute; left:26px; top:24px; height:32px; width:auto; display:block; filter:drop-shadow(0 1px 6px rgba(21,19,15,.45));" />
         </div>
-        <div style="padding:0 26px; margin-top:-52px; position:relative; background:#15130F; flex:1;">
+        <div class="landing-copy" style="padding:0 26px; margin-top:-52px; position:relative; background:#15130F; flex:1;">
           <p style="margin:0 0 14px; font-size:12px; letter-spacing:.26em; text-transform:uppercase; color:#A6842C;">Queen's University · Class of 2027</p>
           <h1 class="h-serif" style="font-size:40px; line-height:1.02; margin-bottom:16px; color:#F7F2E7;">Campus Canvas</h1>
           <p style="margin:0 0 30px; font-size:16.5px; font-weight:300; line-height:1.7; color:#CFC7B6;">Join the contest! Submit 3 photos of the places or spaces that capture a memory of your university experience. Learn more about the terms of the contest <a href="${CONTEST_INFO_URL}" target="_blank" rel="noopener" style="color:#A6842C; text-decoration:underline; text-underline-offset:3px;">here</a>.</p>
         </div>
-        <div style="padding:24px 26px 34px; background:#15130F;">
+        <div class="landing-actions" style="padding:24px 26px 34px; background:#15130F;">
           <button class="btn btn-gold-dark" id="enter-btn">Submit Your 3 Photos</button>
           <button class="btn btn-outline-light" id="vote-only-btn" style="margin-top:12px;">Just here to vote</button>
           <p style="margin:16px 0 0; text-align:center; font-size:13px; font-weight:300; color:#7D7360;">No app to download · Runs in your browser</p>

@@ -21,7 +21,7 @@ export function vote(root) {
   lastGain = null;
 
   root.innerHTML = `
-    <div class="screen">
+    <div class="screen screen-wide">
       <div class="topbar" style="padding-bottom:14px;">
         <span style="font-family:'Bodoni Moda',serif; font-size:12px; letter-spacing:.24em; text-transform:uppercase;">Vote</span>
         <div style="display:flex; align-items:center; gap:10px;">
@@ -138,9 +138,9 @@ export function vote(root) {
 
 function votingHTML(img, remaining) {
   return `
-    <div id="vote-card" style="border-radius:20px; overflow:hidden; background:#FFFFFF; box-shadow:0 18px 40px rgba(27,25,22,.13);">
-      <div style="position:relative;">
-        <div style="width:100%; aspect-ratio:1.42; background-color:#EDE6D8; ${photoStyle(img.photo)} display:block;"></div>
+    <div id="vote-card" class="vote-card" style="border-radius:20px; overflow:hidden; background:#FFFFFF; box-shadow:0 18px 40px rgba(27,25,22,.13);">
+      <div class="vote-photo-wrap" style="position:relative;">
+        <div class="vote-photo" style="width:100%; aspect-ratio:1.42; background-color:#EDE6D8; ${photoStyle(img.photo)} display:block;"></div>
         <div style="position:absolute; left:14px; top:14px; height:28px; padding:0 12px; border-radius:14px; background:rgba(27,25,22,.62); backdrop-filter:blur(6px); display:flex; align-items:center; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:#F3EEE3;">${remaining} left</div>
       </div>
       <div style="padding:18px 20px 20px;">
@@ -154,7 +154,7 @@ function votingHTML(img, remaining) {
       <button id="note-btn" style="height:44px; padding:0 18px; border-radius:22px; border:1px solid rgba(27,25,22,.18); background:#fff; display:flex; align-items:center; font-size:12.5px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:#4A443A; cursor:pointer;">Note +3</button>
       <button id="like-btn" style="width:66px; height:66px; border-radius:33px; background:#2E6B5C; color:#FFFDF8; border:none; display:flex; align-items:center; justify-content:center; font-size:14.5px; font-weight:500; letter-spacing:.10em; text-transform:uppercase; cursor:pointer; box-shadow:0 8px 20px rgba(46,107,92,.30);">Like</button>
     </div>
-    <p style="margin:14px 0 0; text-align:center; font-size:13.5px; font-weight:300; color:#8C8375;">Swipe right to like, left to pass</p>
+    <p class="swipe-hint" style="margin:14px 0 0; text-align:center; font-size:13.5px; font-weight:300; color:#8C8375;">Swipe right to like, left to pass</p>
   `;
 }
 

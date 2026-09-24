@@ -290,3 +290,65 @@ table.rank-table td.num { text-align: right; }
 /* Viewport-height screen whose .scroll child scrolls internally (terms). */
 .screen-fixed { flex: none; height: 100vh; height: 100dvh; min-height: 0; }
 .screen-fixed > .scroll { min-height: 0; }
+
+/* ---------- Laptop / desktop (student app) ----------
+   The screens are built phone-first as one column. From 900px up the column
+   widens and centres, the bottom tab bar becomes a left sidebar, and the
+   landing page and vote card go side by side. Phones are unaffected. */
+@media (min-width: 900px) {
+  #app { max-width: none; }
+
+  /* Every direct part of a screen (top bar, scroll area, footer) shares one centred column. */
+  .screen > * { width: 100%; max-width: 720px; margin-left: auto; margin-right: auto; }
+  .screen.screen-wide > * { max-width: 980px; }
+
+  /* Tab bar → fixed left sidebar; screens that show it make room for it. */
+  body:has(.bottomnav) #app { padding-left: 232px; }
+  .bottomnav {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 232px; z-index: 30;
+    flex-direction: column; justify-content: flex-start; gap: 4px;
+    padding: 92px 16px 24px; border-top: none; border-right: 1px solid var(--border-soft);
+    background: var(--cream);
+  }
+  .bottomnav::before {
+    content: 'Campus Canvas'; position: absolute; top: 34px; left: 30px;
+    font-family: var(--serif); font-size: 12px; letter-spacing: .24em;
+    text-transform: uppercase; color: var(--ink);
+  }
+  .bottomnav a {
+    flex: none; flex-direction: row; gap: 14px; padding: 13px 14px;
+    border-radius: 12px; font-size: 11px; text-align: left;
+  }
+  .bottomnav a:hover { background: rgba(27,25,22,.05); color: var(--ink); }
+  .bottomnav a.active { background: var(--gold-tint); color: var(--gold); }
+  .topbar { padding-top: 32px; }
+  .toast { bottom: 40px; }
+
+  /* Buttons don't need to stretch across the whole column. */
+  .screen > div:last-child > .btn { max-width: 420px; margin-left: auto; margin-right: auto; }
+
+  /* Sheets become centred dialogs. */
+  .sheet-overlay { align-items: center; padding: 24px; }
+  .sheet { max-width: 540px; margin-top: 0; border-radius: 24px; max-height: 86vh; }
+
+  /* Landing: photo on the left, the pitch and buttons on the right. */
+  .landing > .landing-scroll {
+    max-width: none; display: grid !important;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: 1fr auto; min-height: 100vh; background: #15130F;
+  }
+  .landing-hero { grid-row: 1 / span 2; height: auto !important; min-height: 100vh; }
+  .landing-copy, .landing-actions { width: 100%; max-width: 520px; justify-self: center; }
+  .landing-copy { margin-top: 0 !important; padding: 0 48px !important; align-self: end; }
+  .landing-actions { padding: 8px 48px 64px !important; }
+
+  /* Vote card: photo and text side by side so it fits a laptop screen. */
+  .vote-card { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: stretch; }
+  .vote-photo-wrap { min-height: 420px; }
+  .vote-photo { position: absolute; inset: 0; height: 100%; aspect-ratio: auto !important; }
+  .vote-card > div:last-child { padding: 32px 30px !important; align-self: center; }
+  .swipe-hint { display: none; }
+
+  /* Submit: the three photo slots would be very tall at this width. */
+  .slot { aspect-ratio: 1.3 !important; }
+}
