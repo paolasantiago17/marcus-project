@@ -2,3 +2,5 @@ ArtUP Life.dc.html
 support.js
 node_modules
 .env.local
+dev
+.dev-blob

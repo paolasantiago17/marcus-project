@@ -2,6 +2,9 @@
   "name": "artup-life-site",
   "private": true,
   "version": "1.0.0",
+  "scripts": {
+    "dev": "node dev/server.js"
+  },
   "dependencies": {
     "@vercel/blob": "^2.8.0"
   }

@@ -99,3 +99,18 @@ python3 -m http.server 4173
 The `/api/*` routes won't exist locally, so `script.js` falls back to the hardcoded
 defaults in the HTML — fine for working on layout and styling, but CMS content and
 the admin editor need a deployed environment (or `vercel dev`).
+
+### Local dev server (with the CMS)
+
+To work on the admin/editor side without a Vercel login:
+
+```bash
+npm run dev    # http://localhost:3000, log in at /admin as admin / artup-local
+```
+
+`dev/server.js` serves the static pages, runs each `api/*.js` file as a function,
+applies the `vercel.json` rewrites, and swaps `@vercel/blob` for a local
+`.dev-blob/` folder, so saves and uploads never touch production content. Override
+the login with `ADMIN_USERNAME` / `ADMIN_PASSWORD`, or the port with `PORT`. API
+files are reloaded on every request, so edits show up without a restart. Images
+already hosted in the production Blob store still load from there.
