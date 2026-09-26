@@ -13,6 +13,8 @@
 --   * Internal review notes live in image_reviews, which only admins can read.
 
 create extension if not exists citext;
+-- Lets the database make web requests; email_feedback below uses it.
+create extension if not exists pg_net with schema extensions;
 
 -- ---------------------------------------------------------------- tables
 
@@ -406,6 +408,33 @@ begin
   values (p.email, 'submit_feedback', f.id::text, jsonb_build_object('category', f.category));
   return f;
 end $$;
+
+-- Every new feedback row is also posted to the website's contact form, so it
+-- reaches info@artup.life like a Contact page message (a reply goes to the
+-- student). pg_net sends it once the row is saved; a failure never stops the
+-- feedback from saving, and it's in the console either way.
+create or replace function public.email_feedback() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare p public.participants;
+begin
+  select * into p from public.participants where id = new.participant_id;
+  -- The Contact page form's fields (api/contact.js in the website repo).
+  perform net.http_post(
+    url := 'https://artup.life/api/contact',
+    body := jsonb_build_object(
+      'name', p.name, 'email', p.email::text,
+      'subject', 'Campus Canvas feedback: ' || new.category,
+      'message', new.message),
+    timeout_milliseconds := 10000);
+  return new;
+exception when others then
+  raise warning 'Feedback % was saved but not emailed: %', new.id, sqlerrm;
+  return new;
+end $$;
+
+drop trigger if exists email_feedback on public.feedback;
+create trigger email_feedback after insert on public.feedback
+  for each row execute function public.email_feedback();
 
 -- Returns the storage paths the caller should delete from the bucket.
 create or replace function public.delete_my_data() returns text[]
