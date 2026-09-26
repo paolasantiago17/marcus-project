@@ -216,6 +216,7 @@ begin
   if v_uid is null then raise exception 'No session' using errcode = '42501'; end if;
   if v_name = '' then raise exception 'Name is required'; end if;
   if v_email !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' then raise exception 'Email is not valid'; end if;
+  if v_email !~ '@queensu\.ca$' then raise exception 'Please use your @queensu.ca email to take part'; end if;
 
   -- One participant per browser session: release any other row this session held.
   update public.participants set auth_uid = null where auth_uid = v_uid and email <> v_email;

@@ -87,14 +87,19 @@ export function register(root) {
       <div class="scroll" style="padding:34px 24px 0;">
         <p class="eyebrow">Step 1 of 3</p>
         <h2 class="h-serif" style="font-size:33px; line-height:1.08; margin-bottom:12px;">Capture your campus story.</h2>
-        <p style="margin:0 0 30px; font-weight:300; font-size:16px; line-height:1.65; color:#5B5449;">Three photographs that define your years here. Your name and email keep your entry — and your votes — together.</p>
+        <p style="margin:0 0 24px; font-weight:300; font-size:16px; line-height:1.65; color:#5B5449;">Three photographs that define your years here. Your name and email keep your entry — and your votes — together.</p>
+
+        <div style="margin:0 0 26px; border-left:3px solid #A6842C; background:#F2ECE0; border-radius:0 12px 12px 0; padding:14px 16px;">
+          <p style="margin:0 0 4px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C6D1F;">Who can take part</p>
+          <p style="margin:0; font-size:15px; font-weight:400; line-height:1.55; color:#1B1916;">Queen’s University students, 18 or older, with a <strong style="font-weight:500;">@queensu.ca</strong> email address.</p>
+        </div>
 
         <label style="display:block; margin:0 0 8px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C8375;">Full name</label>
         <input type="text" id="reg-name" placeholder="Your full name" style="margin-bottom:20px;" />
 
-        <label style="display:block; margin:0 0 8px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C8375;">University email</label>
-        <input type="email" id="reg-email" placeholder="you@queensu.ca" />
-        <p id="reg-hint" style="margin:10px 0 0; font-size:14px; font-weight:300; color:#8C8375;">Your email is your identity here — one entry per address.</p>
+        <label style="display:block; margin:0 0 8px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C8375;">Queen’s email (@queensu.ca)</label>
+        <input type="email" id="reg-email" placeholder="you@queensu.ca" autocomplete="email" />
+        <p id="reg-hint" style="margin:10px 0 0; font-size:14px; font-weight:300; color:#8C8375;">Only @queensu.ca addresses can register. One entry per address.</p>
 
         <div style="margin-top:28px; border-radius:16px; background:#F2ECE0; padding:18px 20px; display:flex; gap:14px; align-items:flex-start;">
           <span style="width:22px; height:22px; border-radius:11px; background:#A6842C; flex:none; display:block;"></span>
@@ -117,6 +122,7 @@ export function register(root) {
     const email = emailEl.value.trim();
     if (!name) { toast('Add your full name to continue.'); nameEl.focus(); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('That email doesn’t look right.'); emailEl.focus(); return; }
+    if (!/@queensu\.ca$/i.test(email)) { toast('Please use your @queensu.ca email to take part.', 3200); emailEl.focus(); return; }
     const restore = busy(continueBtn, 'Saving…');
     try {
       await Store.register(name, email);

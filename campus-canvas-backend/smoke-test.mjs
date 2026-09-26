@@ -18,7 +18,7 @@ const rejects = async (name, promise) => { const { error } = await promise; ok(n
 
 // 1x1 JPEG
 const jpeg = Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=', 'base64');
-const email = `smoke-${Date.now()}@example.com`;
+const email = `smoke-${Date.now()}@queensu.ca`;
 const cleanupPaths = [];
 let uid = null;
 
