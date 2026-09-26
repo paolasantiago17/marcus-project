@@ -84,7 +84,7 @@ begin
     raise exception 'Open the log-in link we emailed you to continue' using errcode = '42501';
   end if;
   select * into p from public.participants where email = v_email;
-  if p.id is null then raise exception 'We couldn’t find an account with that email. Sign up instead?'; end if;
+  if p.id is null then raise exception 'We could not find an account with that email. Sign up instead?'; end if;
   update public.participants set auth_uid = null where auth_uid = v_uid and id <> p.id;
   update public.participants set auth_uid = v_uid where id = p.id returning * into p;
   insert into public.audit_log (actor, action, entity, detail)
