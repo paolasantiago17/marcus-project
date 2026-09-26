@@ -361,6 +361,10 @@ function noticesTab() {
           <div><p class="eyebrow" style="letter-spacing:.18em;">CTA label</p><input id="n-cta" type="text" style="${INPUT} height:46px; font-size:14px;" placeholder="Visit artup.life" /></div>
           <div><p class="eyebrow" style="letter-spacing:.18em;">Outbound URL</p><input id="n-url" type="url" style="${INPUT} height:46px; font-size:14px;" placeholder="https://artup.life" /></div>
         </div>
+        <label style="display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:13px; color:#4A443A; cursor:pointer;">
+          <input type="checkbox" id="n-email" checked style="width:16px; height:16px; accent-color:#A6842C;" />
+          Also email this to students (${Store.emailableStudents()})
+        </label>
         <button id="n-publish" class="btn btn-gold" style="width:auto; height:40px; padding:0 20px; font-size:11px;">Publish</button>
 
         <p class="eyebrow" style="letter-spacing:.18em; margin-top:30px;">Published</p>
@@ -602,11 +606,21 @@ function wireEvents() {
     const url = root.querySelector('#n-url').value.trim();
     if (!title || !body) { toast('A notice needs a title and a message.'); return; }
     if (url && !/^https?:\/\//i.test(url)) { toast('Outbound URL must start with https://'); return; }
-    act(e.currentTarget, 'Publishing…', () => Store.publishNotice({
-      title, body, url,
-      category: root.querySelector('#n-cat').value.trim(),
-      ctaLabel: root.querySelector('#n-cta').value.trim(),
-    }), 'Notice published.');
+    const sendEmail = root.querySelector('#n-email').checked;
+    let notice = null;
+    act(e.currentTarget, 'Publishing…', async () => {
+      notice = await Store.publishNotice({
+        title, body, url,
+        category: root.querySelector('#n-cat').value.trim(),
+        ctaLabel: root.querySelector('#n-cta').value.trim(),
+      });
+    }, sendEmail ? 'Notice published. Emailing students…' : 'Notice published.').then((done) => {
+      // The notice is live either way; this only reports whether the email went.
+      if (!done || !sendEmail || !notice) return;
+      Store.emailNotice(notice.id)
+        .then((sent) => toast(`Notice emailed to ${sent} student${sent === 1 ? '' : 's'}.`, 3600))
+        .catch((err) => toast(`Notice published, but the email didn’t go out: ${err.message}`, 6000));
+    });
   });
   root.querySelectorAll('[data-retire]').forEach((el) => el.addEventListener('click', (e) => {
     act(e.currentTarget, '…', () => Store.retireNotice(el.dataset.retire), 'Notice retired.');

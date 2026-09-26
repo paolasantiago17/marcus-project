@@ -59,7 +59,7 @@ const toParticipant = (r) => ({
   id: r.id, name: r.name, email: r.email, registeredAt: r.registered_at,
   termsVersion: r.terms_version, termsAcceptedAt: r.terms_accepted_at, points: r.points,
   // Rows from before the access column existed count as approved.
-  access: r.access || 'approved',
+  access: r.access || 'approved', isSeed: !!r.is_seed,
 });
 const toImage = (r) => ({
   id: r.id, participantId: r.participant_id, source: r.source, credit: r.credit,
@@ -91,6 +91,20 @@ async function q(promise) {
 
 async function rpc(name, args = {}) {
   return q(sb.rpc(name, args));
+}
+
+// The admin console's email functions (campus-canvas-app/api), called with
+// the admin's own login so they can check it.
+async function callEmailApi(name, payload) {
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch(`/api/${name}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Email failed (${res.status})`);
+  return body;
 }
 
 const SEEN_STATUS_KEY = 'cc-photo-status-seen';
@@ -420,14 +434,7 @@ export const Store = {
   // (api/notify-review.js). Resolves to false when there's nothing to send yet.
   async notifyIfReviewed(participantId) {
     if (!participantId || this.allImages().some((i) => i.participantId === participantId && i.status === 'pending')) return false;
-    const { data: { session } } = await sb.auth.getSession();
-    const res = await fetch('/api/notify-review', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ participantId }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error || `Email failed (${res.status})`);
+    await callEmailApi('notify-review', { participantId });
     return true;
   },
 
@@ -550,11 +557,21 @@ export const Store = {
   },
 
   async publishNotice({ title, body, category, ctaLabel, url }) {
-    await rpc('admin_publish_notice', {
+    const notice = await rpc('admin_publish_notice', {
       p_title: title, p_body: body, p_category: category || 'Announcement', p_cta_label: ctaLabel || '', p_url: url || '',
     });
     await loadAdmin();
     changed();
+    return notice;
+  },
+
+  // Emails a published notice to every approved student; resolves to how many.
+  async emailNotice(noticeId) {
+    return (await callEmailApi('notify-notice', { noticeId })).sent;
+  },
+
+  emailableStudents() {
+    return Object.values(state.participants).filter((p) => p.access === 'approved' && !p.isSeed).length;
   },
 
   async retireNotice(noticeId) {
