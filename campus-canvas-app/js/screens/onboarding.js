@@ -7,7 +7,7 @@ let intent = 'submit'; // 'submit' | 'vote'
 
 // The ArtUP site's Campus Canvas page, linked from the landing intro.
 const CONTEST_INFO_URL = 'https://artup.life/campus-canvas/';
-const HERO_PHOTO = 'assets/hero-frosh.jpg';
+const HERO_PHOTO = 'assets/hero-frosh.webp';
 
 export function landing(root) {
   // Black, white and gold side by side: the message sits on ivory and the
