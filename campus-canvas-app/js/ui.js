@@ -90,9 +90,26 @@ export function statusScreen(root, title, body) {
     </div>`;
 }
 
+// A student's three photos with where each one stands, and a way to replace
+// any that weren't accepted.
+const STATUS_LABEL = { accepted: 'In voting', pending: 'In review', rejected: 'Not accepted' };
+export function entryGridHTML(images, dark = false) {
+  const colour = dark
+    ? { accepted: '#7FB7A5', pending: '#9A8F79', rejected: '#E08A74' }
+    : { accepted: '#2E6B5C', pending: '#8C8375', rejected: '#C4543A' };
+  return `<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; text-align:left;">
+    ${images.map((img) => `
+      <div>
+        <div style="width:100%; aspect-ratio:.8; border-radius:12px; background:#EDE6D8 center/cover url('${esc(img.photo)}');"></div>
+        <p style="margin:7px 0 0; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:${colour[img.status]};">${STATUS_LABEL[img.status]}</p>
+        ${img.status === 'rejected' ? `<a href="#/replace?id=${img.id}" style="display:inline-block; margin-top:3px; font-size:13px; color:${dark ? '#D9B85C' : '#A6842C'}; text-decoration:underline;">Replace</a>` : ''}
+      </div>`).join('')}
+  </div>`;
+}
+
 // Tells a student how the curators' review of their photos went, the first
 // time they open the app after it happens.
-export function photoUpdateSheet(images, onSee) {
+export function photoUpdateSheet(images, onSee, onReplace) {
   if (document.getElementById('photo-update')) return;
   const accepted = images.filter((i) => i.status === 'accepted').length;
   const rejected = images.length - accepted;
@@ -113,13 +130,14 @@ export function photoUpdateSheet(images, onSee) {
             <span style="flex:none; font-size:12px; letter-spacing:.10em; text-transform:uppercase; color:${img.status === 'accepted' ? '#2E6B5C' : '#C4543A'};">${img.status === 'accepted' ? 'In voting' : 'Not accepted'}</span>
           </div>`).join('')}
       </div>
-      ${rejected ? '<p style="margin:0 0 22px; font-size:14px; font-weight:300; line-height:1.6; color:#5B5449;">Every photo is checked against the contest guidelines, and ones that don’t meet them aren’t added to voting. Questions? Send us a note from the Feedback tab.</p>' : ''}
-      <button class="btn btn-gold" id="photo-update-see" style="margin-bottom:12px;">See my submissions</button>
+      ${rejected ? `<p style="margin:0 0 22px; font-size:14px; font-weight:300; line-height:1.6; color:#5B5449;">Every photo is checked against the contest guidelines, and ones that don’t meet them aren’t added to voting. You can replace ${rejected === 1 ? 'it' : 'them'} with a new photo.</p>` : ''}
+      <button class="btn btn-gold" id="photo-update-see" style="margin-bottom:12px;">${rejected ? 'Replace photo' : 'See my submissions'}</button>
       <button class="btn btn-outline" id="photo-update-close">Close</button>
     </div>`;
   document.body.appendChild(el);
   const close = () => el.remove();
   el.querySelector('#photo-update-close').addEventListener('click', close);
   el.addEventListener('click', (e) => { if (e.target === el) close(); });
-  el.querySelector('#photo-update-see').addEventListener('click', () => { close(); onSee(); });
+  const firstRejected = images.find((i) => i.status !== 'accepted');
+  el.querySelector('#photo-update-see').addEventListener('click', () => { close(); if (firstRejected) onReplace(firstRejected); else onSee(); });
 }

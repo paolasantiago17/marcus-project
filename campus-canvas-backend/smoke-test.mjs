@@ -101,6 +101,15 @@ try {
   ok('accepted submission appears in catalogue', nowVisible.data.length === 1);
   await rejects('student cannot vote on own accepted photo', student.rpc('cast_vote', { p_image: sub.data[0].id, p_value: 'like' }));
 
+  await rejects('an accepted photo cannot be replaced', student.rpc('replace_rejected_image', { p_image: sub.data[0].id, p_storage_path: items[0].storage_path, p_photo_url: items[0].photo_url, p_title: 'x', p_description: 'y' }));
+  await admin.rpc('admin_review_image', { p_image: sub.data[1].id, p_status: 'rejected', p_note: 'smoke' });
+  const newPath = `submissions/${uid}/smoke-replacement.jpg`;
+  await student.storage.from('photos').upload(newPath, jpeg, { contentType: 'image/jpeg' });
+  cleanupPaths.push(newPath);
+  const swap = await student.rpc('replace_rejected_image', { p_image: sub.data[1].id, p_storage_path: newPath, p_photo_url: student.storage.from('photos').getPublicUrl(newPath).data.publicUrl, p_title: 'Replacement', p_description: 'A better one.' });
+  const swapped = (await student.from('images').select('status, title').eq('id', sub.data[1].id).single()).data;
+  ok('rejected photo can be replaced and goes back to review', !swap.error && swapped.status === 'pending' && swapped.title === 'Replacement', swap.error?.message);
+
   const catPath = `catalog/admin/smoke-${Date.now()}.jpg`;
   const catUp = await admin.storage.from('photos').upload(catPath, jpeg, { contentType: 'image/jpeg' });
   ok('admin catalogue upload', !catUp.error, catUp.error?.message);

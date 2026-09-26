@@ -1,7 +1,7 @@
 import { Store } from './store.js';
 import { Router } from './router.js';
 import { landing, register, termsGate, login, pending, finishLogin } from './screens/onboarding.js';
-import { submit, submitted } from './screens/submit.js';
+import { submit, submitted, replace } from './screens/submit.js';
 import { vote } from './screens/vote.js';
 import { notices, noticeDetail } from './screens/notices.js';
 import { feedback } from './screens/feedback.js';
@@ -9,10 +9,10 @@ import { account } from './screens/account.js';
 import { terms } from './screens/terms.js';
 import { toast, statusScreen, photoUpdateSheet } from './ui.js';
 
-const NEEDS_PARTICIPANT = new Set(['submit', 'submitted', 'vote', 'notices', 'notice', 'feedback', 'account', 'terms']);
+const NEEDS_PARTICIPANT = new Set(['submit', 'submitted', 'replace', 'vote', 'notices', 'notice', 'feedback', 'account', 'terms']);
 // The database refuses votes, notice reads and feedback until the current
 // Terms of Use are accepted (migrations-002), so those screens ask first too.
-const NEEDS_TERMS = new Set(['submit', 'vote', 'notices', 'notice', 'feedback']);
+const NEEDS_TERMS = new Set(['submit', 'replace', 'vote', 'notices', 'notice', 'feedback']);
 
 Router.register('home', landing);
 Router.register('register', register);
@@ -21,6 +21,7 @@ Router.register('login', login);
 Router.register('pending', pending);
 Router.register('submit', submit);
 Router.register('submitted', submitted);
+Router.register('replace', replace);
 Router.register('vote', vote);
 Router.register('notices', notices);
 Router.register('notice', noticeDetail);
@@ -47,7 +48,7 @@ function checkPhotoUpdates() {
   const updates = Store.photoUpdates();
   if (!updates.length) return;
   Store.markPhotoUpdatesSeen();
-  photoUpdateSheet(updates, () => Router.go('#/account'));
+  photoUpdateSheet(updates, () => Router.go('#/account'), (img) => Router.go(`#/replace?id=${img.id}`));
 }
 
 // Re-render screens that only display data when fresh data arrives; screens

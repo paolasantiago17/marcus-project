@@ -369,6 +369,25 @@ export const Store = {
     changed();
   },
 
+  // Swap a rejected photo for a new one; it goes back to review.
+  async replaceRejected(imageId, { file, title, description }) {
+    const { data: { user } } = await sb.auth.getUser();
+    const up = await uploadPhoto(`submissions/${user.id}`, file);
+    let oldPath;
+    try {
+      oldPath = await rpc('replace_rejected_image', {
+        p_image: imageId, p_storage_path: up.path, p_photo_url: up.url,
+        p_title: title.trim(), p_description: description.trim(),
+      });
+    } catch (err) {
+      await sb.storage.from(BUCKET).remove([up.path]);
+      throw err;
+    }
+    if (oldPath) await sb.storage.from(BUCKET).remove([oldPath]);
+    await loadStudent();
+    changed();
+  },
+
   // Reviews the student hasn't been told about yet. What they've seen is kept
   // per browser; at worst a student on a new device hears about it twice.
   photoUpdates() {
@@ -395,6 +414,21 @@ export const Store = {
     await rpc('admin_review_image', { p_image: imageId, p_status: status, p_note: note ?? null });
     await loadAdmin();
     changed();
+  },
+
+  // Emails the student once none of their photos are waiting for review
+  // (api/notify-review.js). Resolves to false when there's nothing to send yet.
+  async notifyIfReviewed(participantId) {
+    if (!participantId || this.allImages().some((i) => i.participantId === participantId && i.status === 'pending')) return false;
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch('/api/notify-review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ participantId }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Email failed (${res.status})`);
+    return true;
   },
 
   async updateImageDetails(imageId, { title, description }) {

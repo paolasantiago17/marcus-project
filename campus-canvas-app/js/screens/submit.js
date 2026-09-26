@@ -1,6 +1,6 @@
 import { Store, photoStyle } from '../store.js';
 import { Router } from '../router.js';
-import { bottomNav, avatarBtn, toast, wordCount, busy, esc } from '../ui.js';
+import { bottomNav, avatarBtn, toast, wordCount, busy, esc, entryGridHTML } from '../ui.js';
 
 const MAX_WORDS = 200;
 
@@ -39,6 +39,41 @@ function okType(file) {
   return /^image\/(jpeg|png|heic|heif)$/i.test(file.type) || /\.(jpe?g|png|heic|heif)$/i.test(file.name);
 }
 
+const LABEL = 'display:block; margin:0 0 6px; font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:#8C8375;';
+
+// One photo with its title and description; used by Submit and Replace.
+function cardHTML(s, i, heading) {
+  const problem = slotProblem(s);
+  return `
+          <div class="card" data-card="${i}" style="padding:16px; margin-bottom:16px; border-radius:18px; border:1px solid ${problem ? 'rgba(27,25,22,.10)' : 'rgba(46,107,92,.45)'};">
+            <div style="display:flex; gap:14px; align-items:flex-start; margin-bottom:14px;">
+              ${s.url ? `
+              <div style="flex:none; width:92px;">
+                <img src="${s.url}" alt="Photo ${i + 1}" style="width:92px; height:112px; object-fit:cover; border-radius:12px; display:block;" />
+                <div style="display:flex; justify-content:space-between; margin-top:6px;">
+                  <a href="#" data-replace="${i}" style="font-size:12px; color:#A6842C; text-decoration:underline;">Replace</a>
+                  <a href="#" data-remove="${i}" style="font-size:12px; color:#8C8375; text-decoration:underline;">Remove</a>
+                </div>
+              </div>` : `
+              <button data-add="${i}" style="flex:none; width:92px; height:112px; border-radius:12px; border:1px dashed rgba(27,25,22,.30); background:#F4EFE5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; cursor:pointer; color:#8C8375; font-family:inherit;">
+                <span style="font-size:24px; line-height:1; color:#A6842C;">+</span>
+                <span style="font-size:11px; letter-spacing:.12em; text-transform:uppercase;">Add photo</span>
+              </button>`}
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                  <span class="h-serif" style="font-size:18px;">${heading}</span>
+                  <span data-status="${i}" style="font-size:12px; font-weight:400; color:${problem ? '#A6842C' : '#2E6B5C'};">${problem || '&#10003; Ready'}</span>
+                </div>
+                <label for="title-${i}" style="${LABEL}">Title <span style="color:#C4543A;">*</span></label>
+                <input type="text" id="title-${i}" data-title="${i}" value="${esc(s.title)}" maxlength="80" placeholder="e.g. Sunrise walk to Grant Hall" style="height:44px; font-size:15px;" />
+              </div>
+            </div>
+            <label for="desc-${i}" style="${LABEL}">Why this photo matters <span style="color:#C4543A;">*</span></label>
+            <textarea id="desc-${i}" data-desc="${i}" rows="3" placeholder="Tell us why this place defines your years here…" style="font-size:15px;">${esc(s.description)}</textarea>
+            <p data-words="${i}" style="margin:6px 0 0; text-align:right; font-size:12.5px; color:${wordCount(s.description) > MAX_WORDS ? '#C4543A' : '#8C8375'};">${wordCount(s.description)} / ${MAX_WORDS} words</p>
+          </div>`;
+}
+
 // Each photo gets its own card with its title and description right under
 // it, so it's always clear what's being described. Photos can be picked
 // several at a time; they fill the empty cards in order.
@@ -50,7 +85,6 @@ export function submit(root) {
   const filledCount = slots.filter((s) => s.url).length;
   const allValid = slots.every(validSlot);
   const emptyCount = 3 - filledCount;
-  const label = 'display:block; margin:0 0 6px; font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:#8C8375;';
 
   root.innerHTML = `
     <div class="screen">
@@ -72,37 +106,7 @@ export function submit(root) {
         <input type="file" accept="image/jpeg,image/png,image/heic,image/heif" capture="environment" id="cam-input" style="display:none;" />
         <input type="file" accept="image/jpeg,image/png,image/heic,image/heif" id="slot-input" style="display:none;" />
 
-        ${slots.map((s, i) => {
-          const problem = slotProblem(s);
-          return `
-          <div class="card" data-card="${i}" style="padding:16px; margin-bottom:16px; border-radius:18px; border:1px solid ${problem ? 'rgba(27,25,22,.10)' : 'rgba(46,107,92,.45)'};">
-            <div style="display:flex; gap:14px; align-items:flex-start; margin-bottom:14px;">
-              ${s.url ? `
-              <div style="flex:none; width:92px;">
-                <img src="${s.url}" alt="Photo ${i + 1}" style="width:92px; height:112px; object-fit:cover; border-radius:12px; display:block;" />
-                <div style="display:flex; justify-content:space-between; margin-top:6px;">
-                  <a href="#" data-replace="${i}" style="font-size:12px; color:#A6842C; text-decoration:underline;">Replace</a>
-                  <a href="#" data-remove="${i}" style="font-size:12px; color:#8C8375; text-decoration:underline;">Remove</a>
-                </div>
-              </div>` : `
-              <button data-add="${i}" style="flex:none; width:92px; height:112px; border-radius:12px; border:1px dashed rgba(27,25,22,.30); background:#F4EFE5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; cursor:pointer; color:#8C8375; font-family:inherit;">
-                <span style="font-size:24px; line-height:1; color:#A6842C;">+</span>
-                <span style="font-size:11px; letter-spacing:.12em; text-transform:uppercase;">Add photo</span>
-              </button>`}
-              <div style="flex:1; min-width:0;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                  <span class="h-serif" style="font-size:18px;">Photo ${i + 1}</span>
-                  <span data-status="${i}" style="font-size:12px; font-weight:400; color:${problem ? '#A6842C' : '#2E6B5C'};">${problem || '&#10003; Ready'}</span>
-                </div>
-                <label for="title-${i}" style="${label}">Title <span style="color:#C4543A;">*</span></label>
-                <input type="text" id="title-${i}" data-title="${i}" value="${esc(s.title)}" maxlength="80" placeholder="e.g. Sunrise walk to Grant Hall" style="height:44px; font-size:15px;" />
-              </div>
-            </div>
-            <label for="desc-${i}" style="${label}">Why this photo matters <span style="color:#C4543A;">*</span></label>
-            <textarea id="desc-${i}" data-desc="${i}" rows="3" placeholder="Tell us why this place defines your years here…" style="font-size:15px;">${esc(s.description)}</textarea>
-            <p data-words="${i}" style="margin:6px 0 0; text-align:right; font-size:12.5px; color:${wordCount(s.description) > MAX_WORDS ? '#C4543A' : '#8C8375'};">${wordCount(s.description)} / ${MAX_WORDS} words</p>
-          </div>`;
-        }).join('')}
+        ${slots.map((s, i) => cardHTML(s, i, `Photo ${i + 1}`)).join('')}
         <p style="margin:0 0 26px; font-size:13.5px; font-weight:300; color:#8C8375;">JPEG, PNG or HEIC. We check every file before your entry is accepted.</p>
       </div>
       <div style="padding:14px 24px 0;">
@@ -206,6 +210,92 @@ export function submit(root) {
   });
 }
 
+// A photo the curators didn't accept can be swapped for a new one, which goes
+// back into the review queue.
+let replaceDraft = null;
+
+export function replace(root, { params = {} } = {}) {
+  const old = Store.myImages().find((img) => img.id === params.id && img.status === 'rejected');
+  if (!old) { Router.go('#/account'); return; }
+  if (!replaceDraft || replaceDraft.id !== old.id) replaceDraft = { id: old.id, slot: freshSlot() };
+  const s = replaceDraft.slot;
+  const ready = validSlot(s);
+
+  root.innerHTML = `
+    <div class="screen">
+      <div class="topbar" style="padding-bottom:16px;">
+        <span style="font-family:'Bodoni Moda',serif; font-size:12px; letter-spacing:.24em; text-transform:uppercase;">Replace a photo</span>
+        <button data-nav="#/account" aria-label="Close" style="border:none; background:none; font-size:17px; color:#8C8375; cursor:pointer; padding:0;">&times;</button>
+      </div>
+      <div class="scroll" style="padding:0 24px;">
+        <div style="display:flex; gap:14px; align-items:center; padding:14px; border-radius:14px; background:#F2ECE0; margin-bottom:18px;">
+          <div style="flex:none; width:56px; height:56px; border-radius:10px; ${photoStyle(old.photo)}"></div>
+          <p style="margin:0; font-size:14.5px; font-weight:300; line-height:1.55; color:#4A443A;"><strong style="font-weight:500; color:#1B1916;">“${esc(old.title)}”</strong> wasn’t accepted. Choose a new photo to take its place and the curators will review it.</p>
+        </div>
+        ${cardHTML(s, 0, 'New photo')}
+        <p style="margin:0 0 26px; font-size:13.5px; font-weight:300; color:#8C8375;">JPEG, PNG or HEIC. We check every file before it’s accepted.</p>
+      </div>
+      <div style="padding:14px 24px 28px; border-top:1px solid rgba(27,25,22,.08);">
+        <button class="btn ${ready ? 'btn-gold' : 'btn-flat'}" id="replace-submit" ${ready ? '' : 'disabled'}>Send for review</button>
+      </div>
+      <input type="file" accept="image/jpeg,image/png,image/heic,image/heif" id="slot-input" style="display:none;" />
+    </div>`;
+
+  const input = root.querySelector('#slot-input');
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (!okType(file)) { toast('Use a JPEG, PNG or HEIC photo.'); return; }
+    try {
+      replaceDraft.slot = { ...s, file, url: await readPreview(file) };
+    } catch (e) {
+      toast('Could not read that file. Try again.');
+    }
+    replace(root, { params });
+  });
+  root.querySelectorAll('[data-add], [data-replace]').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); input.click(); }));
+  root.querySelector('[data-remove]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    replaceDraft.slot = { ...s, file: null, url: null };
+    replace(root, { params });
+  });
+
+  const btn = root.querySelector('#replace-submit');
+  const refresh = () => {
+    const problem = slotProblem(s);
+    const status = root.querySelector('[data-status="0"]');
+    status.innerHTML = problem || '&#10003; Ready';
+    status.style.color = problem ? '#A6842C' : '#2E6B5C';
+    root.querySelector('[data-card="0"]').style.borderColor = problem ? 'rgba(27,25,22,.10)' : 'rgba(46,107,92,.45)';
+    btn.disabled = !!problem;
+    btn.className = 'btn ' + (problem ? 'btn-flat' : 'btn-gold');
+  };
+  root.querySelector('[data-title]').addEventListener('input', (e) => { s.title = e.target.value; refresh(); });
+  root.querySelector('[data-desc]').addEventListener('input', (e) => {
+    s.description = e.target.value;
+    const count = wordCount(s.description);
+    const words = root.querySelector('[data-words="0"]');
+    words.textContent = `${count} / ${MAX_WORDS} words`;
+    words.style.color = count > MAX_WORDS ? '#C4543A' : '#8C8375';
+    refresh();
+  });
+
+  btn.addEventListener('click', async () => {
+    if (!validSlot(s)) return;
+    const restore = busy(btn, 'Uploading your photo…');
+    try {
+      await Store.replaceRejected(old.id, { file: s.file, title: s.title, description: s.description });
+    } catch (err) {
+      restore();
+      toast(`Your photo wasn’t sent: ${err.message} Please try again.`, 6000);
+      return;
+    }
+    replaceDraft = null;
+    toast('Your new photo is in for review.', 3200);
+    Router.go('#/account');
+  });
+}
+
 export function submitted(root) {
   const fresh = justSubmitted;
   justSubmitted = false;
@@ -219,9 +309,7 @@ export function submitted(root) {
         <p style="margin:0 0 10px; font-size:12px; letter-spacing:.24em; text-transform:uppercase; color:#A6842C;">${fresh ? 'Submitted' : 'Entry received'}</p>
         <h2 class="h-serif" style="font-size:34px; line-height:1.1; margin-bottom:16px; color:#F7F2E7;">Your three are in.</h2>
         <p style="margin:0 auto 36px; max-width:300px; font-size:16px; font-weight:300; line-height:1.7; color:#CFC7B6;">We’ve received all three photographs and descriptions. An ArtUP curator reviews every submission before it enters voting, and you can follow each photo’s status in your profile.</p>
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:36px;">
-          ${photos.map((img) => `<div style="width:100%; aspect-ratio:.8; border-radius:12px; ${photoStyle(img.photo)} display:block;"></div>`).join('')}
-        </div>
+        <div style="margin-bottom:36px;">${entryGridHTML(photos, true)}</div>
         <div style="border-radius:18px; border:1px solid rgba(243,238,227,.20); padding:22px; text-align:left;">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
             <span style="font-size:12px; letter-spacing:.20em; text-transform:uppercase; color:#9A8F79;">Entry earned</span>

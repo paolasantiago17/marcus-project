@@ -1,6 +1,6 @@
-import { Store, photoStyle } from '../store.js';
+import { Store } from '../store.js';
 import { Router } from '../router.js';
-import { toast, busy, esc } from '../ui.js';
+import { toast, busy, esc, entryGridHTML } from '../ui.js';
 
 export function account(root) {
   const p = Store.currentParticipant();
@@ -45,12 +45,10 @@ export function account(root) {
         ${mine.length ? `
           <p class="eyebrow" style="letter-spacing:.20em;">Your entry</p>
           <div class="card" style="padding:16px; margin-bottom:28px;">
-            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px;">
-              ${mine.map((img) => `<div style="width:100%; aspect-ratio:.85; ${photoStyle(img.photo)} border-radius:9px; display:block;"></div>`).join('')}
-            </div>
+            <div style="margin-bottom:14px;">${entryGridHTML(mine)}</div>
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-size:14px; font-weight:300; color:#8C8375;">Submitted ${new Date(mine[0].submittedAt).toLocaleDateString()}</span>
-              <span style="font-size:12.5px; letter-spacing:.12em; text-transform:uppercase; color:#2E6B5C;">${accepted} accepted${inReview ? ` · ${inReview} in review` : ''}</span>
+              <span style="font-size:12.5px; letter-spacing:.12em; text-transform:uppercase; color:#2E6B5C;">${accepted} in voting${inReview ? ` · ${inReview} in review` : ''}</span>
             </div>
           </div>` : `
           <div class="card" style="padding:18px 20px; margin-bottom:28px;">

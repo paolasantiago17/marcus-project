@@ -35,6 +35,14 @@ async function act(button, label, fn, successMsg) {
   }
 }
 
+// Once all of a student's photos are reviewed, email them the outcome. The
+// review itself is already saved; this only reports whether the email went.
+function emailStudent(participantId) {
+  Store.notifyIfReviewed(participantId)
+    .then((sent) => { if (sent) toast('Emailed the student their results.', 3200); })
+    .catch((err) => toast(`Review saved, but the student wasn’t emailed: ${err.message}`, 6000));
+}
+
 function downloadCSV(filename, csv) {
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -476,10 +484,11 @@ function wireEvents() {
     // Read every field up front: the first save re-renders the page.
     const edits = detailsChanged(img) ? { title: titleField.value, description: descField.value } : null;
     const note = root.querySelector('#review-note').value;
-    await act(e.currentTarget, 'Saving…', async () => {
+    const done = await act(e.currentTarget, 'Saving…', async () => {
       if (edits) await Store.updateImageDetails(img.id, edits);
       await Store.reviewImage(img.id, status, note);
     }, status === 'accepted' ? 'Accepted — now in the voting catalogue.' : 'Rejected.');
+    if (done) emailStudent(img.participantId);
   };
   root.querySelector('#accept-btn')?.addEventListener('click', decide('accepted'));
   root.querySelector('#reject-btn')?.addEventListener('click', decide('rejected'));
@@ -497,9 +506,10 @@ function wireEvents() {
     editingImageId = null;
     render();
   }));
-  root.querySelectorAll('[data-review-move]').forEach((el) => el.addEventListener('click', (e) => {
+  root.querySelectorAll('[data-review-move]').forEach((el) => el.addEventListener('click', async (e) => {
     const [imageId, status] = el.dataset.reviewMove.split(':');
-    act(e.currentTarget, '…', () => Store.reviewImage(imageId, status));
+    const owner = Store.state.images[imageId]?.participantId;
+    if (await act(e.currentTarget, '…', () => Store.reviewImage(imageId, status)) && status !== 'pending') emailStudent(owner);
   }));
   root.querySelectorAll('[data-edit-image]').forEach((el) => el.addEventListener('click', () => {
     editingImageId = el.dataset.editImage;
