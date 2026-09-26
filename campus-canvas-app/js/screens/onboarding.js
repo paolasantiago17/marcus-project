@@ -292,7 +292,7 @@ export function termsGate(root, { params = {} } = {}) {
   root.innerHTML = `
     <div class="screen screen-fixed">
       <div style="padding:14px 24px 16px; border-bottom:1px solid rgba(27,25,22,.10); display:flex; align-items:center; justify-content:space-between;">
-        <span style="font-size:12.5px; letter-spacing:.20em; text-transform:uppercase; color:#8C8375;">${isUpdate ? 'Updated terms' : next === 'submit' ? 'Step 2 of 3' : 'Before you vote'}</span>
+        <span style="font-size:12.5px; letter-spacing:.20em; text-transform:uppercase; color:#8C8375;">${isUpdate ? 'Updated terms' : { submit: 'Step 2 of 3', vote: 'Before you vote' }[next] || 'Before you continue'}</span>
         <span style="font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:#A6842C;">Updated ${TERMS_LAST_UPDATED}</span>
       </div>
       <div class="scroll" id="terms-scroll" style="padding:26px 24px 12px; background:#fff; min-height:0;">
