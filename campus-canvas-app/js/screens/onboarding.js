@@ -9,6 +9,16 @@ let intent = 'submit'; // 'submit' | 'vote'
 const CONTEST_INFO_URL = 'https://artup.life/campus-canvas/';
 const HERO_PHOTO = 'assets/hero-frosh.webp';
 
+// What students can do, shown under the landing intro.
+const FEATURES = [
+  [`<svg viewBox="0 0 24 24" fill="none" width="20" height="20"><rect x="3.5" y="5.5" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 8.5V4.5a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-2" stroke="currentColor" stroke-width="1.5"/><path d="M5 16l3.5-3.5 2.5 2.5 2-2 3 3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+    'Submit photos', 'Share three original photos of your Queen’s experience.'],
+  [`<svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M12 20s-7-4.35-9.5-8.5C.9 8 2.6 4.5 6 4.5c2 0 3.4 1.1 4 2.2.6-1.1 2-2.2 4-2.2 3.4 0 5.1 3.5 3.5 7C19 15.65 12 20 12 20z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+    'Vote', 'Explore the photos. Choose what resonates.'],
+  [`<svg viewBox="0 0 24 24" fill="none" width="20" height="20"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+    'Track submissions', 'Find your photos and their review status in your profile.'],
+];
+
 export function landing(root) {
   // Black, white and gold side by side: the message sits on ivory and the
   // buttons on a black band. The photo grows on taller phones to fill the
@@ -18,6 +28,10 @@ export function landing(root) {
   root.innerHTML = `
     <div class="screen landing" style="background:#FBF8F2;">
       <style>
+        .landing-features { display:grid; grid-template-columns:repeat(3, 1fr); margin-top:24px; border-top:1px solid rgba(27,25,22,.12); }
+        .landing-features > div { padding:16px 10px 2px; }
+        .landing-features > div:first-child { padding-left:0; }
+        .landing-features > div + div { border-left:1px solid rgba(27,25,22,.12); }
         @media (min-width: 900px) {
           .landing > .landing-scroll { background: #FBF8F2 !important; }
           .landing-copy { padding: 0 48px 44px !important; }
@@ -26,7 +40,7 @@ export function landing(root) {
         }
       </style>
       <div class="scroll landing-scroll" style="display:flex; flex-direction:column;">
-        <div class="landing-hero" style="position:relative; height:300px; height:max(300px, calc(100svh - 450px)); overflow:hidden; flex:none;">
+        <div class="landing-hero" style="position:relative; height:240px; height:max(240px, calc(100svh - 640px)); overflow:hidden; flex:none;">
           <div style="position:absolute; inset:0; ${photoStyle(HERO_PHOTO)}"></div>
           <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(21,19,15,.45) 0%, rgba(21,19,15,0) 22%);"></div>
           <img src="assets/monogram-transparent.png" alt="ArtUP" style="position:absolute; left:26px; top:24px; height:32px; width:auto; display:block; filter:drop-shadow(0 1px 6px rgba(21,19,15,.45));" />
@@ -35,6 +49,14 @@ export function landing(root) {
           <p style="margin:0 0 14px; font-size:12px; letter-spacing:.26em; text-transform:uppercase; color:#A6842C;">Queen's University · Class of 2027</p>
           <h1 class="h-serif" style="font-size:40px; line-height:1.02; margin-bottom:16px; color:#15130F;">Campus Canvas</h1>
           <p style="margin:0; font-size:16.5px; font-weight:300; line-height:1.7; color:#4A443A;">Join the contest! Submit 3 photos of the places or spaces that capture a memory of your university experience. Learn more about the terms of the contest <a href="${CONTEST_INFO_URL}" target="_blank" rel="noopener" style="color:#A6842C; text-decoration:underline; text-underline-offset:3px;">here</a>.</p>
+          <div class="landing-features">
+            ${FEATURES.map(([icon, title, body]) => `
+              <div>
+                <span style="display:block; width:20px; height:20px; color:#A6842C; margin-bottom:10px;">${icon}</span>
+                <p class="h-serif" style="font-size:17.5px; line-height:1.2; color:#15130F; margin-bottom:6px;">${title}</p>
+                <p style="margin:0; font-size:13.5px; font-weight:300; line-height:1.45; color:#5B5449;">${body}</p>
+              </div>`).join('')}
+          </div>
         </div>
         <div class="landing-actions" style="padding:28px 26px 34px; background:#15130F;">
           <button class="btn btn-gold-dark" id="enter-btn">Submit Your 3 Photos</button>
