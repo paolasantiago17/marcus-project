@@ -22,9 +22,10 @@ export function vote(root) {
 
   root.innerHTML = `
     <div class="screen screen-wide">
-      <div class="topbar" style="padding-bottom:14px;">
+      <div class="topbar" style="padding-bottom:14px; display:grid; grid-template-columns:1fr auto 1fr;">
+        <img src="assets/monogram.png" alt="ArtUP" style="height:30px; width:auto; display:block; justify-self:start;" />
         <span style="font-family:'Bodoni Moda',serif; font-size:12px; letter-spacing:.24em; text-transform:uppercase;">Vote</span>
-        <div style="display:flex; align-items:center; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px; justify-self:end;">
           <div class="pts-pill-wrap">
             <div class="pts-pill ${gainToShow ? 'pts-pulse' : ''}" style="display:flex; align-items:center; gap:8px; height:34px; padding:0 14px; border-radius:17px; background:#15130F;">
               <span style="font-size:12.5px; color:#A6842C;">&#9670;</span>
