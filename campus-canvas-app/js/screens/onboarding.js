@@ -1,4 +1,4 @@
-import { Store, SEED_PHOTOS, photoStyle } from '../store.js';
+import { Store, photoStyle } from '../store.js';
 import { Router } from '../router.js';
 import { toast, busy, preloadPhotos } from '../ui.js';
 import { termsHTML, TERMS_LAST_UPDATED } from '../terms-content.js';
@@ -7,6 +7,7 @@ let intent = 'submit'; // 'submit' | 'vote'
 
 // The ArtUP site's Campus Canvas page, linked from the landing intro.
 const CONTEST_INFO_URL = 'https://artup.life/campus-canvas/';
+const HERO_PHOTO = 'assets/hero-frosh.jpg';
 
 export function landing(root) {
   // The photo grows on taller phones to fill the screen above the buttons.
@@ -17,7 +18,7 @@ export function landing(root) {
     <div class="screen landing" style="background:#15130F;">
       <div class="scroll landing-scroll" style="display:flex; flex-direction:column; color:#F3EEE3;">
         <div class="landing-hero" style="position:relative; height:342px; height:max(342px, calc(100svh - 400px)); overflow:hidden; flex:none;">
-          <div style="position:absolute; inset:0; ${photoStyle(SEED_PHOTOS[0])}"></div>
+          <div style="position:absolute; inset:0; ${photoStyle(HERO_PHOTO)}"></div>
           <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(21,19,15,.45) 0%, rgba(21,19,15,0) 22%, rgba(21,19,15,0) 58%, rgba(21,19,15,.55) 72%, #15130F 85%);"></div>
           <img src="assets/monogram-transparent.png" alt="ArtUP" style="position:absolute; left:26px; top:24px; height:32px; width:auto; display:block; filter:drop-shadow(0 1px 6px rgba(21,19,15,.45));" />
         </div>
