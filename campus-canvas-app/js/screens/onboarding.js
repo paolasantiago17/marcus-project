@@ -23,6 +23,10 @@ export function landing(root) {
   // screen above them; its only shading is at the top, behind the logo. On
   // laptops the band spans the whole right-hand column (the <style> below
   // widens the laptop layout's centred column for it).
+  // Log in stays on the page once someone is signed in too: there's no
+  // log-out, so it's how a shared or test device switches accounts.
+  const me = Store.currentParticipant();
+  const loginPrompt = me ? `Signed in as ${esc(me.name.trim().split(/\s+/)[0])}. Not you?` : 'Already signed up?';
   root.innerHTML = `
     <div class="screen landing" style="background:#FBF8F2;">
       <style>
@@ -59,7 +63,7 @@ export function landing(root) {
         <div class="landing-actions" style="padding:28px 26px 34px; background:#15130F;">
           <button class="btn btn-gold-dark" id="enter-btn">Submit Your 3 Photos</button>
           <button class="btn btn-outline-light" id="vote-only-btn" style="margin-top:12px;">Just here to vote</button>
-          ${Store.currentParticipant() ? '' : `<p style="margin:18px 0 0; text-align:center; font-size:14.5px; font-weight:300; color:#CFC7B6;">Already signed up? <a href="#/login" style="color:#D9B85C; text-decoration:underline; text-underline-offset:3px;">Log in</a></p>`}
+          <p style="margin:18px 0 0; text-align:center; font-size:14.5px; font-weight:300; color:#CFC7B6;">${loginPrompt} <a href="#/login" style="color:#D9B85C; text-decoration:underline; text-underline-offset:3px;">Log in</a></p>
         </div>
       </div>
     </div>`;
