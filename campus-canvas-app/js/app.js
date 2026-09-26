@@ -40,10 +40,23 @@ window.addEventListener('cc:change', () => {
   if (Router.root && LIVE_ROUTES.has(Router.parse(Router.current()).name)) Router.handle();
 });
 
+// Supabase sometimes rejects a login token for a few seconds after issuing it
+// ("JWT issued at future") when its servers' clocks disagree, so that error
+// is retried quietly before the error screen is shown.
+function start(attempt = 1) {
+  Store.init('student')
+    .then(() => Router.mount(root))
+    .catch((err) => {
+      if (attempt < 5 && /issued at future/i.test(err.message)) {
+        setTimeout(() => start(attempt + 1), 1500 * attempt);
+        return;
+      }
+      statusScreen(root, 'We can’t load Campus Canvas right now', `${err.message} Please try again in a moment.`);
+    });
+}
+
 statusScreen(root, 'Campus Canvas', 'Loading…');
-Store.init('student')
-  .then(() => Router.mount(root))
-  .catch((err) => statusScreen(root, 'We can’t load Campus Canvas right now', `${err.message} Please try again in a moment.`));
+start();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

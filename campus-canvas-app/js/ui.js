@@ -84,7 +84,7 @@ export function preloadPhotos(images) {
 export function statusScreen(root, title, body) {
   root.innerHTML = `
     <div class="screen" style="align-items:center; justify-content:center; text-align:center; padding:40px 32px;">
-      <img src="assets/monogram.png" alt="ArtUP" style="height:28px; margin-bottom:24px;" />
+      <img src="assets/monogram.png" alt="ArtUP" style="height:28px; width:auto; margin-bottom:24px;" />
       <h2 class="h-serif" style="font-size:26px; margin-bottom:10px;">${esc(title)}</h2>
       <p style="margin:0; font-size:15.5px; font-weight:300; line-height:1.6; color:#5B5449;">${esc(body)}</p>
     </div>`;
