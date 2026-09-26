@@ -5,8 +5,6 @@ import { termsHTML, TERMS_LAST_UPDATED } from '../terms-content.js';
 
 let intent = 'submit'; // 'submit' | 'vote'
 
-// The ArtUP site's Campus Canvas page, linked from the landing intro.
-const CONTEST_INFO_URL = 'https://artup.life/campus-canvas/';
 const HERO_PHOTO = 'assets/hero-frosh.webp';
 
 // What students can do, shown under the landing intro.
@@ -48,7 +46,7 @@ export function landing(root) {
         <div class="landing-copy" style="padding:28px 26px 30px; background:#FBF8F2; flex:1;">
           <p style="margin:0 0 14px; font-size:12px; letter-spacing:.26em; text-transform:uppercase; color:#A6842C;">Queen's University · Class of 2027</p>
           <h1 class="h-serif" style="font-size:40px; line-height:1.02; margin-bottom:16px; color:#15130F;">Campus Canvas</h1>
-          <p style="margin:0; font-size:16.5px; font-weight:300; line-height:1.7; color:#4A443A;">Join the contest! Submit 3 photos of the places or spaces that capture a memory of your university experience. Learn more about the terms of the contest <a href="${CONTEST_INFO_URL}" target="_blank" rel="noopener" style="color:#A6842C; text-decoration:underline; text-underline-offset:3px;">here</a>.</p>
+          <p style="margin:0; font-size:16.5px; font-weight:300; line-height:1.7; color:#4A443A;">Three photographs of the places that defined your years here. Kingston artists turn the most-loved images into original works.</p>
           <div class="landing-features">
             ${FEATURES.map(([icon, title, body]) => `
               <div>
