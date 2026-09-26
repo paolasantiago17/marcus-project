@@ -230,7 +230,6 @@ export function pending(root) {
   root.querySelector('#pending-other').addEventListener('click', () => Router.go('#/register'));
 }
 
-
 export function termsGate(root) {
   const p = Store.currentParticipant();
   const isUpdate = !!(p && p.termsVersion && p.termsVersion !== Store.TERMS_VERSION);
