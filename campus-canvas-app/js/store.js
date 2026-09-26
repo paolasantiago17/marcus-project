@@ -93,6 +93,11 @@ async function rpc(name, args = {}) {
   return q(sb.rpc(name, args));
 }
 
+const SEEN_STATUS_KEY = 'cc-photo-status-seen';
+function readSeenStatuses() {
+  try { return JSON.parse(localStorage.getItem(SEEN_STATUS_KEY)) || {}; } catch (e) { return {}; }
+}
+
 function setParticipant(row) {
   if (!row) { state.currentParticipantId = null; return null; }
   const p = toParticipant(row);
@@ -362,6 +367,19 @@ export const Store = {
     }
     await loadStudent();
     changed();
+  },
+
+  // Reviews the student hasn't been told about yet. What they've seen is kept
+  // per browser; at worst a student on a new device hears about it twice.
+  photoUpdates() {
+    const seen = readSeenStatuses();
+    return this.myImages().filter((i) => i.status !== 'pending' && seen[i.id] !== i.status);
+  },
+
+  markPhotoUpdatesSeen() {
+    const seen = readSeenStatuses();
+    for (const i of this.myImages()) seen[i.id] = i.status;
+    try { localStorage.setItem(SEEN_STATUS_KEY, JSON.stringify(seen)); } catch (e) { /* storage blocked */ }
   },
 
   // ---- review (FR-020..FR-023, AR-003) ----

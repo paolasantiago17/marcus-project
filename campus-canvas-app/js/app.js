@@ -7,7 +7,7 @@ import { notices, noticeDetail } from './screens/notices.js';
 import { feedback } from './screens/feedback.js';
 import { account } from './screens/account.js';
 import { terms } from './screens/terms.js';
-import { toast, statusScreen } from './ui.js';
+import { toast, statusScreen, photoUpdateSheet } from './ui.js';
 
 const NEEDS_PARTICIPANT = new Set(['submit', 'submitted', 'vote', 'notices', 'notice', 'feedback', 'account', 'terms']);
 // The database refuses votes, notice reads and feedback until the current
@@ -40,10 +40,21 @@ const root = document.getElementById('app');
 const LIVE_ROUTES = new Set(['vote', 'notices', 'account']);
 
 window.addEventListener('cc:error', (e) => toast(e.detail, 3200));
+// Tell a student once when curators accept or reject their photos. Checked
+// on load and whenever fresh data arrives (e.g. coming back to the tab).
+function checkPhotoUpdates() {
+  if (!Store.isApproved()) return;
+  const updates = Store.photoUpdates();
+  if (!updates.length) return;
+  Store.markPhotoUpdatesSeen();
+  photoUpdateSheet(updates, () => Router.go('#/account'));
+}
+
 // Re-render screens that only display data when fresh data arrives; screens
 // with forms in progress are left alone so typing isn't wiped.
 window.addEventListener('cc:change', () => {
   if (Router.root && LIVE_ROUTES.has(Router.parse(Router.current()).name)) Router.handle();
+  if (Router.root) checkPhotoUpdates();
 });
 
 // A magic link lands on ?login=1 with the session (or an error such as an
@@ -71,6 +82,7 @@ function start(attempt = 1) {
       if (fromLoginLink || linkError) history.replaceState(null, '', location.pathname);
       Router.mount(root);
       if (fromLoginLink || linkError) afterLoginLink();
+      checkPhotoUpdates();
     })
     .catch((err) => {
       if (attempt < 5 && /issued at future/i.test(err.message)) {

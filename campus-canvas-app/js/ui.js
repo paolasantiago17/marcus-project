@@ -89,3 +89,37 @@ export function statusScreen(root, title, body) {
       <p style="margin:0; font-size:15.5px; font-weight:300; line-height:1.6; color:#5B5449;">${esc(body)}</p>
     </div>`;
 }
+
+// Tells a student how the curators' review of their photos went, the first
+// time they open the app after it happens.
+export function photoUpdateSheet(images, onSee) {
+  if (document.getElementById('photo-update')) return;
+  const accepted = images.filter((i) => i.status === 'accepted').length;
+  const rejected = images.length - accepted;
+  const headline = !rejected ? (accepted === 1 ? 'Your photo is in voting!' : 'Your photos are in voting!')
+    : !accepted ? 'An update on your photos' : 'Your photos have been reviewed';
+  const el = document.createElement('div');
+  el.id = 'photo-update';
+  el.className = 'sheet-overlay';
+  el.innerHTML = `
+    <div class="sheet" style="padding:26px 24px 28px;">
+      <p class="eyebrow" style="letter-spacing:.20em; margin-bottom:6px;">Curator review</p>
+      <h3 class="h-serif" style="font-size:25px; line-height:1.15; margin-bottom:18px;">${headline}</h3>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:${rejected ? 14 : 22}px;">
+        ${images.map((img) => `
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="flex:none; width:48px; height:48px; border-radius:10px; background:#EDE6D8 center/cover url('${esc(img.photo)}');"></div>
+            <span style="flex:1; min-width:0; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(img.title)}</span>
+            <span style="flex:none; font-size:12px; letter-spacing:.10em; text-transform:uppercase; color:${img.status === 'accepted' ? '#2E6B5C' : '#C4543A'};">${img.status === 'accepted' ? 'In voting' : 'Not accepted'}</span>
+          </div>`).join('')}
+      </div>
+      ${rejected ? '<p style="margin:0 0 22px; font-size:14px; font-weight:300; line-height:1.6; color:#5B5449;">Every photo is checked against the contest guidelines, and ones that don’t meet them aren’t added to voting. Questions? Send us a note from the Feedback tab.</p>' : ''}
+      <button class="btn btn-gold" id="photo-update-see" style="margin-bottom:12px;">See my submissions</button>
+      <button class="btn btn-outline" id="photo-update-close">Close</button>
+    </div>`;
+  document.body.appendChild(el);
+  const close = () => el.remove();
+  el.querySelector('#photo-update-close').addEventListener('click', close);
+  el.addEventListener('click', (e) => { if (e.target === el) close(); });
+  el.querySelector('#photo-update-see').addEventListener('click', () => { close(); onSee(); });
+}
