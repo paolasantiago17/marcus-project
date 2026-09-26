@@ -31,7 +31,10 @@ create table if not exists public.participants (
   terms_version     text,
   terms_accepted_at timestamptz,
   points            int not null default 0,
-  is_seed           boolean not null default false
+  is_seed           boolean not null default false,
+  -- @queensu.ca sign-ups are approved at once; other addresses wait for an admin.
+  access            text not null default 'approved' check (access in ('approved', 'pending', 'rejected')),
+  age_confirmed_at  timestamptz
 );
 
 create table if not exists public.images (
@@ -138,11 +141,18 @@ end $$;
 create or replace function public.current_terms_version() returns text
 language sql immutable as $$ select '2026-09-16'::text $$;
 
--- A registered participant who has accepted the current terms (FR-004).
+-- A registered participant who has accepted the current terms (FR-004) and
+-- whose access is approved. Everything but accepting terms and deleting your
+-- data goes through this.
 create or replace function public.require_agreed_participant() returns public.participants
 language plpgsql stable security definer set search_path = public as $$
 declare p public.participants := public.require_participant();
 begin
+  if p.access = 'pending' then
+    raise exception 'Your account is waiting for approval from the ArtUP team' using errcode = '42501';
+  elsif p.access = 'rejected' then
+    raise exception 'This email was not approved for Campus Canvas' using errcode = '42501';
+  end if;
   if p.terms_version is distinct from public.current_terms_version() then
     raise exception 'Please accept the current Terms of Use to continue' using errcode = '42501';
   end if;
@@ -204,7 +214,7 @@ create policy audit_read on public.audit_log for select using (public.is_admin()
 
 -- ---------------------------------------------------------------- student functions
 
-create or replace function public.register_participant(p_name text, p_email text)
+create or replace function public.register_participant(p_name text, p_email text, p_age_confirmed boolean)
 returns public.participants
 language plpgsql security definer set search_path = public as $$
 declare
@@ -216,22 +226,43 @@ begin
   if v_uid is null then raise exception 'No session' using errcode = '42501'; end if;
   if v_name = '' then raise exception 'Name is required'; end if;
   if v_email !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' then raise exception 'Email is not valid'; end if;
-  if v_email !~ '@queensu\.ca$' then raise exception 'Please use your @queensu.ca email to take part'; end if;
+  if p_age_confirmed is not true then raise exception 'Please confirm you are 18 or older'; end if;
 
   -- One participant per browser session: release any other row this session held.
   update public.participants set auth_uid = null where auth_uid = v_uid and email <> v_email;
 
   select * into p from public.participants where email = v_email;
   if p.id is null then
-    insert into public.participants (auth_uid, name, email)
-    values (v_uid, v_name, v_email) returning * into p;
+    insert into public.participants (auth_uid, name, email, access, age_confirmed_at)
+    values (v_uid, v_name, v_email,
+            case when v_email ~ '@queensu\.ca$' then 'approved' else 'pending' end, now())
+    returning * into p;
     insert into public.audit_log (actor, action, entity, detail)
-    values (v_email, 'register', p.id::text, jsonb_build_object('name', v_name));
+    values (v_email, 'register', p.id::text, jsonb_build_object('name', v_name, 'access', p.access));
   else
     -- FR-002: a duplicate email resolves to the existing participant.
-    update public.participants set auth_uid = v_uid, name = v_name
+    update public.participants
+    set auth_uid = v_uid, name = v_name, age_confirmed_at = coalesce(age_confirmed_at, now())
     where id = p.id returning * into p;
   end if;
+  return p;
+end $$;
+
+create or replace function public.sign_in_participant(p_email text)
+returns public.participants
+language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := auth.uid();
+  v_email citext := lower(btrim(p_email));
+  p public.participants;
+begin
+  if v_uid is null then raise exception 'No session' using errcode = '42501'; end if;
+  select * into p from public.participants where email = v_email;
+  if p.id is null then raise exception 'We couldn’t find an account with that email. Sign up instead?'; end if;
+  update public.participants set auth_uid = null where auth_uid = v_uid and id <> p.id;
+  update public.participants set auth_uid = v_uid where id = p.id returning * into p;
+  insert into public.audit_log (actor, action, entity, detail)
+  values (v_email, 'sign_in', p.id::text, '{}'::jsonb);
   return p;
 end $$;
 
@@ -406,6 +437,21 @@ begin
   values (v_admin, 'review_image', p_image::text, jsonb_build_object('status', p_status, 'note', p_note));
 end $$;
 
+create or replace function public.admin_set_participant_access(p_participant uuid, p_access text)
+returns public.participants
+language plpgsql security definer set search_path = public as $$
+declare
+  v_admin text := public.require_admin();
+  p public.participants;
+begin
+  if p_access not in ('approved', 'pending', 'rejected') then raise exception 'Unknown access status'; end if;
+  update public.participants set access = p_access where id = p_participant returning * into p;
+  if p.id is null then raise exception 'Participant not found'; end if;
+  insert into public.audit_log (actor, action, entity, detail)
+  values (v_admin, 'participant_access', p.id::text, jsonb_build_object('access', p_access, 'email', p.email));
+  return p;
+end $$;
+
 create or replace function public.admin_update_image(p_image uuid, p_title text, p_description text)
 returns void
 language plpgsql security definer set search_path = public as $$
@@ -483,13 +529,13 @@ do $$
 declare fn text;
 begin
   foreach fn in array array[
-    'register_participant(text,text)', 'accept_terms(text)', 'submit_entry(jsonb,text)',
+    'register_participant(text,text,boolean)', 'sign_in_participant(text)', 'accept_terms(text)', 'submit_entry(jsonb,text)',
     'cast_vote(uuid,text,text)', 'reset_my_votes()', 'set_test_points(int)',
     'mark_notice_read(uuid)', 'submit_feedback(text,text)', 'delete_my_data()',
     'admin_review_image(uuid,text,text)', 'admin_update_image(uuid,text,text)',
     'admin_add_catalog_image(text,text,text,text,text)',
     'admin_publish_notice(text,text,text,text,text)', 'admin_retire_notice(uuid)',
-    'admin_set_feedback_status(uuid,text)'
+    'admin_set_feedback_status(uuid,text)', 'admin_set_participant_access(uuid,text)'
   ] loop
     execute format('revoke all on function public.%s from public, anon', fn);
     execute format('grant execute on function public.%s to authenticated', fn);

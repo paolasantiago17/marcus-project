@@ -57,7 +57,7 @@ function render() {
         ${navItem('review', 'Review queue', Store.pendingImages().length)}
         ${navItem('upload', 'Add photos', uploadQueue.length)}
         ${navItem('rankings', 'Rankings')}
-        ${navItem('participants', 'Participants')}
+        ${navItem('participants', 'Participants', Store.pendingParticipants().length, true)}
         ${navItem('notices', 'Notices')}
         ${navItem('feedback', 'Feedback', Store.state.feedback.filter((f) => f.status === 'open').length, true)}
         ${navItem('exports', 'Exports')}
@@ -280,14 +280,31 @@ function participantsTab() {
   const list = Object.values(Store.state.participants)
     .filter((p) => !participantQuery || p.name.toLowerCase().includes(participantQuery) || p.email.toLowerCase().includes(participantQuery))
     .sort((a, b) => b.registeredAt.localeCompare(a.registeredAt));
+  const waiting = Store.pendingParticipants();
+  const pill = 'height:32px; padding:0 16px; border-radius:16px; border:1px solid rgba(27,25,22,.16); background:none; font-size:10.5px; letter-spacing:.10em; text-transform:uppercase; color:#4A443A; cursor:pointer;';
   return `
+    ${waiting.length ? `
+    <div class="admin-header">
+      <div><p class="eyebrow">Not a @queensu.ca email</p><h3>Waiting for approval</h3></div>
+    </div>
+    <div style="padding:8px 32px 8px; display:grid; gap:10px;">
+      ${waiting.map((p) => `
+        <div class="card" style="padding:14px 18px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:200px;">
+            <p style="margin:0 0 2px; font-size:14px;">${esc(p.name)}</p>
+            <p style="margin:0; font-size:12.5px; font-weight:300; color:#6E6659;">${esc(p.email)} · signed up ${new Date(p.registeredAt).toLocaleDateString()}</p>
+          </div>
+          <button data-access="${p.id}:approved" style="${pill} background:#1B1916; color:#FBF8F2; border:none;">Approve</button>
+          <button data-access="${p.id}:rejected" style="${pill}">Reject</button>
+        </div>`).join('')}
+    </div>` : ''}
     <div class="admin-header">
       <div><p class="eyebrow">Contest roster</p><h3>Participants</h3></div>
       <input type="text" id="p-search" placeholder="Search name or email…" value="${esc(participantQuery)}" style="width:260px; height:40px; border-radius:20px; border:1px solid rgba(27,25,22,.16); padding:0 16px; font-size:13px;" />
     </div>
     <div style="padding:8px 32px 32px; overflow-x:auto;">
       <table class="rank-table">
-        <thead><tr><th>Name</th><th>Email</th><th>Registered</th><th>Terms</th><th>Entry</th><th class="num">Votes cast</th><th class="num">Points</th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Access</th><th>Registered</th><th>Terms</th><th>Entry</th><th class="num">Votes cast</th><th class="num">Points</th></tr></thead>
         <tbody>
           ${list.length ? list.map((p) => {
             const mine = Store.myImages(p.id);
@@ -295,16 +312,27 @@ function participantsTab() {
             return `<tr>
               <td>${esc(p.name)}</td>
               <td style="color:#6E6659;">${esc(p.email)}</td>
+              <td>${accessCell(p)}</td>
               <td style="color:#6E6659;">${new Date(p.registeredAt).toLocaleDateString()}</td>
               <td>${p.termsVersion === Store.TERMS_VERSION ? 'Current' : p.termsVersion ? `<span style="color:#A6842C;">Older (${esc(p.termsVersion)})</span>` : '<span style="color:#C4543A;">Not accepted</span>'}</td>
               <td>${mine.length}/3</td>
               <td class="num">${votes}</td>
               <td class="num">${p.points}</td>
             </tr>`;
-          }).join('') : '<tr><td colspan="7" style="text-align:center; padding:30px; color:#8C8375;">No participants match.</td></tr>'}
+          }).join('') : '<tr><td colspan="8" style="text-align:center; padding:30px; color:#8C8375;">No participants match.</td></tr>'}
         </tbody>
       </table>
     </div>`;
+}
+
+// @queensu.ca participants are always in; anyone else can be approved or
+// rejected from here at any time.
+function accessCell(p) {
+  const link = (access, label) => `<span data-access="${p.id}:${access}" style="margin-left:8px; font-size:11px; color:#A6842C; cursor:pointer; text-decoration:underline;">${label}</span>`;
+  if (/@queensu\.ca$/i.test(p.email)) return '<span style="color:#6E6659;">Queen’s</span>';
+  if (p.access === 'approved') return `Approved${link('rejected', 'Reject')}`;
+  if (p.access === 'rejected') return `<span style="color:#C4543A;">Rejected</span>${link('approved', 'Approve')}`;
+  return `<span style="color:#A6842C;">Pending</span>`;
 }
 
 function noticesTab() {
@@ -552,6 +580,11 @@ function wireEvents() {
     again.setSelectionRange(again.value.length, again.value.length);
   });
 
+  root.querySelectorAll('[data-access]').forEach((el) => el.addEventListener('click', (e) => {
+    const [id, access] = el.dataset.access.split(':');
+    act(e.currentTarget, '…', () => Store.setParticipantAccess(id, access), access === 'approved' ? 'Participant approved.' : 'Participant rejected.');
+  }));
+
   // ---- notices / feedback ----
   root.querySelector('#n-publish')?.addEventListener('click', (e) => {
     const title = root.querySelector('#n-title').value.trim();
@@ -581,8 +614,8 @@ function wireEvents() {
   root.querySelector('#export-fb')?.addEventListener('click', () => downloadCSV('campus-canvas-feedback.csv', feedbackCSV()));
   root.querySelector('#feedback-export')?.addEventListener('click', () => downloadCSV('campus-canvas-feedback.csv', feedbackCSV()));
   root.querySelector('#participants-export')?.addEventListener('click', () => {
-    const rows = [['id', 'name', 'email', 'registeredAt', 'termsVersion', 'termsAcceptedAt', 'points', 'entryComplete']];
-    Object.values(Store.state.participants).forEach((p) => rows.push([p.id, p.name, p.email, p.registeredAt, p.termsVersion, p.termsAcceptedAt, p.points, Store.myImages(p.id).length === 3]));
+    const rows = [['id', 'name', 'email', 'access', 'registeredAt', 'termsVersion', 'termsAcceptedAt', 'points', 'entryComplete']];
+    Object.values(Store.state.participants).forEach((p) => rows.push([p.id, p.name, p.email, p.access, p.registeredAt, p.termsVersion, p.termsAcceptedAt, p.points, Store.myImages(p.id).length === 3]));
     downloadCSV('campus-canvas-participants.csv', toCSV(rows));
   });
   root.querySelector('#images-export')?.addEventListener('click', () => {

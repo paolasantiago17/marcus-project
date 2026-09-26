@@ -19,6 +19,7 @@ const rejects = async (name, promise) => { const { error } = await promise; ok(n
 // 1x1 JPEG
 const jpeg = Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=', 'base64');
 const email = `smoke-${Date.now()}@queensu.ca`;
+const outsideEmail = `smoke-${Date.now()}@example.com`;
 const cleanupPaths = [];
 let uid = null;
 
@@ -32,8 +33,16 @@ try {
   await rejects('vote before registering is refused', student.rpc('cast_vote', { p_image: crypto.randomUUID(), p_value: 'like' }));
   await rejects('direct table insert is refused', student.from('images').insert({ title: 'x', photo_url: 'x' }));
 
-  const reg = await student.rpc('register_participant', { p_name: 'Smoke Test', p_email: email });
-  ok('register participant', !reg.error, reg.error?.message);
+  await rejects('sign-up without confirming 18+ is refused', student.rpc('register_participant', { p_name: 'Smoke Test', p_email: email, p_age_confirmed: false }));
+  const outside = await student.rpc('register_participant', { p_name: 'Smoke Outside', p_email: outsideEmail, p_age_confirmed: true });
+  ok('non-queensu sign-up waits for approval', outside.data?.access === 'pending', outside.error?.message ?? outside.data?.access);
+  await rejects('pending participant cannot vote', student.rpc('cast_vote', { p_image: crypto.randomUUID(), p_value: 'like' }));
+
+  const reg = await student.rpc('register_participant', { p_name: 'Smoke Test', p_email: email, p_age_confirmed: true });
+  ok('register participant', !reg.error && reg.data.access === 'approved', reg.error?.message);
+  await rejects('log in with an unknown email is refused', student.rpc('sign_in_participant', { p_email: `nobody-${Date.now()}@queensu.ca` }));
+  const back = await student.rpc('sign_in_participant', { p_email: email.toUpperCase() });
+  ok('log back in with email', !back.error && back.data.id === reg.data.id, back.error?.message);
 
   const items = [];
   for (let i = 0; i < 3; i++) {
@@ -73,6 +82,10 @@ try {
   ok('admin sign-in', !signIn.error, signIn.error?.message);
   const allImgs = await admin.from('images').select('status');
   ok('admin sees pending images too', allImgs.data.some((i) => i.status === 'pending'), `${allImgs.data.length} total`);
+  const outsideRow = (await admin.from('participants').select('id').eq('email', outsideEmail).single()).data;
+  const approve = await admin.rpc('admin_set_participant_access', { p_participant: outsideRow.id, p_access: 'approved' });
+  ok('admin approves a non-queensu participant', approve.data?.access === 'approved', approve.error?.message);
+  await rejects('student cannot approve participants', student.rpc('admin_set_participant_access', { p_participant: outsideRow.id, p_access: 'approved' }));
   const rev = await admin.rpc('admin_review_image', { p_image: sub.data[0].id, p_status: 'accepted', p_note: 'smoke' });
   ok('admin accepts a submission', !rev.error, rev.error?.message);
   const nowVisible = await student.from('images').select('id').eq('id', sub.data[0].id);
@@ -96,10 +109,10 @@ try {
   const removed = await student.storage.from('photos').remove(del.data || []);
   ok('student can delete their own photo files', removed.data?.length === 3, `${removed.data?.length ?? 0} of 3 removed`);
 } finally {
-  await service.from('participants').delete().eq('email', email);
+  await service.from('participants').delete().in('email', [email, outsideEmail]);
   if (uid) await service.auth.admin.deleteUser(uid);
   if (cleanupPaths.length) await service.storage.from('photos').remove(cleanupPaths);
-  await service.from('audit_log').delete().or(`actor.eq.${email},detail->>title.eq.Smoke catalogue,detail->>note.eq.smoke`);
+  await service.from('audit_log').delete().or(`actor.eq.${email},actor.eq.${outsideEmail},detail->>title.eq.Smoke catalogue,detail->>note.eq.smoke`);
 }
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nAll checks passed');

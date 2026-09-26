@@ -1,6 +1,6 @@
 import { Store, photoStyle } from '../store.js';
 import { Router } from '../router.js';
-import { toast, busy, preloadPhotos } from '../ui.js';
+import { toast, busy, preloadPhotos, esc } from '../ui.js';
 import { termsHTML, TERMS_LAST_UPDATED } from '../terms-content.js';
 
 let intent = 'submit'; // 'submit' | 'vote'
@@ -61,12 +61,14 @@ export function landing(root) {
         <div class="landing-actions" style="padding:28px 26px 34px; background:#15130F;">
           <button class="btn btn-gold-dark" id="enter-btn">Submit Your 3 Photos</button>
           <button class="btn btn-outline-light" id="vote-only-btn" style="margin-top:12px;">Just here to vote</button>
+          ${Store.currentParticipant() ? '' : `<p style="margin:18px 0 0; text-align:center; font-size:14.5px; font-weight:300; color:#CFC7B6;">Already signed up? <a href="#/login" style="color:#D9B85C; text-decoration:underline; text-underline-offset:3px;">Log in</a></p>`}
         </div>
       </div>
     </div>`;
 
   root.querySelector('#enter-btn').addEventListener('click', () => {
     intent = 'submit';
+    if (Store.currentParticipant() && !Store.isApproved()) { Router.go('#/pending'); return; }
     Router.go(Store.currentParticipant() ? (Store.hasAcceptedCurrentTerms() ? '#/submit' : '#/terms-gate') : '#/register');
   });
   root.querySelector('#vote-only-btn').addEventListener('click', () => {
@@ -91,15 +93,20 @@ export function register(root) {
 
         <div style="margin:0 0 26px; border-left:3px solid #A6842C; background:#F2ECE0; border-radius:0 12px 12px 0; padding:14px 16px;">
           <p style="margin:0 0 4px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C6D1F;">Who can take part</p>
-          <p style="margin:0; font-size:15px; font-weight:400; line-height:1.55; color:#1B1916;">Queen’s University students, 18 or older, with a <strong style="font-weight:500;">@queensu.ca</strong> email address.</p>
+          <p style="margin:0; font-size:15px; font-weight:400; line-height:1.55; color:#1B1916;">Queen’s University students, 18 or older. Sign up with your <strong style="font-weight:500;">@queensu.ca</strong> email for instant access. Other addresses are reviewed by the ArtUP team first.</p>
         </div>
 
         <label style="display:block; margin:0 0 8px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C8375;">Full name</label>
         <input type="text" id="reg-name" placeholder="Your full name" style="margin-bottom:20px;" />
 
-        <label style="display:block; margin:0 0 8px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C8375;">Queen’s email (@queensu.ca)</label>
+        <label style="display:block; margin:0 0 8px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C8375;">Email</label>
         <input type="email" id="reg-email" placeholder="you@queensu.ca" autocomplete="email" />
-        <p id="reg-hint" style="margin:10px 0 0; font-size:14px; font-weight:300; color:#8C8375;">Only @queensu.ca addresses can register. One entry per address.</p>
+        <p id="reg-hint" style="margin:10px 0 0; font-size:14px; font-weight:300; color:#8C8375;">Use your @queensu.ca address if you have one. One entry per address.</p>
+
+        <label for="reg-age" style="display:flex; align-items:flex-start; gap:12px; margin-top:22px; cursor:pointer;">
+          <input type="checkbox" id="reg-age" style="width:20px; height:20px; margin-top:2px; flex:none; accent-color:#A6842C;" />
+          <span style="font-size:15px; font-weight:400; line-height:1.55; color:#1B1916;">I confirm I’m 18 or older.</span>
+        </label>
 
         <div style="margin-top:28px; border-radius:16px; background:#F2ECE0; padding:18px 20px; display:flex; gap:14px; align-items:flex-start;">
           <span style="width:22px; height:22px; border-radius:11px; background:#A6842C; flex:none; display:block;"></span>
@@ -108,13 +115,19 @@ export function register(root) {
       </div>
       <div style="padding:18px 24px 28px; border-top:1px solid rgba(27,25,22,.08);">
         <button class="btn btn-gold" id="reg-continue">Continue${intent === 'submit' ? ' to terms' : ''}</button>
+        <p style="margin:14px 0 0; text-align:center; font-size:14.5px; font-weight:300; color:#5B5449;">Already have an account? <a href="#/login" style="color:#A6842C; text-decoration:underline; text-underline-offset:3px;">Log in</a></p>
       </div>
     </div>`;
 
   const nameEl = root.querySelector('#reg-name');
   const emailEl = root.querySelector('#reg-email');
+  const ageEl = root.querySelector('#reg-age');
   const existing = Store.currentParticipant();
-  if (existing) { nameEl.value = existing.name; emailEl.value = existing.email; }
+  if (existing) {
+    nameEl.value = existing.name;
+    // Someone waiting for approval is here to switch to their Queen's address.
+    if (existing.access === 'approved') emailEl.value = existing.email;
+  }
 
   const continueBtn = root.querySelector('#reg-continue');
   continueBtn.addEventListener('click', async () => {
@@ -122,19 +135,101 @@ export function register(root) {
     const email = emailEl.value.trim();
     if (!name) { toast('Add your full name to continue.'); nameEl.focus(); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('That email doesn’t look right.'); emailEl.focus(); return; }
-    if (!/@queensu\.ca$/i.test(email)) { toast('Please use your @queensu.ca email to take part.', 3200); emailEl.focus(); return; }
+    if (!ageEl.checked) { toast('Please confirm you’re 18 or older.'); ageEl.focus(); return; }
     const restore = busy(continueBtn, 'Saving…');
     try {
-      await Store.register(name, email);
+      await Store.register(name, email, true);
     } catch (err) {
       restore();
       toast(err.message, 3200);
       return;
     }
-    if (intent === 'vote') Router.go('#/vote');
-    else Router.go(Store.hasAcceptedCurrentTerms() ? '#/submit' : '#/terms-gate');
+    afterSignIn();
   });
 }
+
+// Where someone goes once they're registered or logged back in.
+function afterSignIn() {
+  if (!Store.isApproved()) Router.go('#/pending');
+  else if (intent === 'vote') Router.go('#/vote');
+  else if (Store.myImages().length) Router.go('#/account');
+  else Router.go(Store.hasAcceptedCurrentTerms() ? '#/submit' : '#/terms-gate');
+}
+
+export function login(root) {
+  root.innerHTML = `
+    <div class="screen">
+      <div class="topbar">
+        <div class="brand"><img src="assets/monogram.png" alt="ArtUP" /><span>Campus Canvas</span></div>
+        <span style="font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:#A6842C;">Queen's</span>
+      </div>
+      <div class="scroll" style="padding:34px 24px 0;">
+        <p class="eyebrow">Welcome back</p>
+        <h2 class="h-serif" style="font-size:33px; line-height:1.08; margin-bottom:12px;">Log in</h2>
+        <p style="margin:0 0 26px; font-weight:300; font-size:16px; line-height:1.65; color:#5B5449;">Enter the email you signed up with to pick up your entry, votes and points.</p>
+        <label style="display:block; margin:0 0 8px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C8375;">Email</label>
+        <input type="email" id="login-email" placeholder="you@queensu.ca" autocomplete="email" />
+      </div>
+      <div style="padding:18px 24px 28px; border-top:1px solid rgba(27,25,22,.08);">
+        <button class="btn btn-gold" id="login-btn">Log in</button>
+        <p style="margin:14px 0 0; text-align:center; font-size:14.5px; font-weight:300; color:#5B5449;">New here? <a href="#/register" style="color:#A6842C; text-decoration:underline; text-underline-offset:3px;">Sign up</a></p>
+      </div>
+    </div>`;
+
+  const emailEl = root.querySelector('#login-email');
+  const btn = root.querySelector('#login-btn');
+  const go = async () => {
+    const email = emailEl.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('That email doesn’t look right.'); emailEl.focus(); return; }
+    const restore = busy(btn, 'Logging in…');
+    try {
+      await Store.signIn(email);
+    } catch (err) {
+      restore();
+      toast(err.message, 3600);
+      return;
+    }
+    intent = 'vote';
+    afterSignIn();
+  };
+  btn.addEventListener('click', go);
+  emailEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+}
+
+// Non-@queensu.ca sign-ups wait here until an admin approves or rejects them.
+export function pending(root) {
+  const p = Store.currentParticipant();
+  if (!p) { Router.go('#/register'); return; }
+  if (p.access === 'approved') { Router.go('#/'); return; }
+  const rejected = p.access === 'rejected';
+  root.innerHTML = `
+    <div class="screen">
+      <div class="topbar">
+        <div class="brand"><img src="assets/monogram.png" alt="ArtUP" /><span>Campus Canvas</span></div>
+        <span style="font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:#A6842C;">Queen's</span>
+      </div>
+      <div class="scroll" style="padding:34px 24px 0;">
+        <p class="eyebrow">${rejected ? 'Not approved' : 'Almost there'}</p>
+        <h2 class="h-serif" style="font-size:33px; line-height:1.08; margin-bottom:12px;">${rejected ? 'We couldn’t approve this email.' : 'Your sign-up is being reviewed.'}</h2>
+        <p style="margin:0 0 22px; font-weight:300; font-size:16px; line-height:1.65; color:#5B5449;">${rejected
+          ? 'Campus Canvas is for Queen’s University students. If you have a @queensu.ca address, sign up with that one instead.'
+          : `Thanks, ${esc(p.name.split(' ')[0])}! Because <strong style="font-weight:500; color:#1B1916;">${esc(p.email)}</strong> isn’t a @queensu.ca address, the ArtUP team checks it before you can submit or vote. Come back and log in with this email once it’s approved.`}</p>
+      </div>
+      <div style="padding:18px 24px 28px; border-top:1px solid rgba(27,25,22,.08);">
+        ${rejected ? '' : '<button class="btn btn-gold" id="pending-check">Check again</button>'}
+        <button class="btn btn-outline" id="pending-other" style="margin-top:12px;">Use my @queensu.ca email</button>
+      </div>
+    </div>`;
+
+  root.querySelector('#pending-check')?.addEventListener('click', async (e) => {
+    const restore = busy(e.currentTarget, 'Checking…');
+    await Store.refresh().catch(() => {});
+    if (Store.isApproved()) { toast('You’re approved. Welcome!'); afterSignIn(); }
+    else { restore(); toast('Still waiting for review.'); }
+  });
+  root.querySelector('#pending-other').addEventListener('click', () => Router.go('#/register'));
+}
+
 
 export function termsGate(root) {
   const p = Store.currentParticipant();

@@ -1,6 +1,6 @@
 import { Store } from './store.js';
 import { Router } from './router.js';
-import { landing, register, termsGate } from './screens/onboarding.js';
+import { landing, register, termsGate, login, pending } from './screens/onboarding.js';
 import { submit, submitted } from './screens/submit.js';
 import { vote } from './screens/vote.js';
 import { notices, noticeDetail } from './screens/notices.js';
@@ -15,6 +15,8 @@ const NEEDS_TERMS = new Set(['submit']);
 Router.register('home', landing);
 Router.register('register', register);
 Router.register('terms-gate', termsGate);
+Router.register('login', login);
+Router.register('pending', pending);
 Router.register('submit', submit);
 Router.register('submitted', submitted);
 Router.register('vote', vote);
@@ -26,6 +28,8 @@ Router.register('terms', terms);
 
 Router.setGuard((name) => {
   if (NEEDS_PARTICIPANT.has(name) && !Store.currentParticipant()) return '#/register';
+  // Non-@queensu.ca sign-ups can't take part until an admin approves them.
+  if ((NEEDS_PARTICIPANT.has(name) || name === 'terms-gate') && Store.currentParticipant() && !Store.isApproved()) return '#/pending';
   if (NEEDS_TERMS.has(name) && !Store.hasAcceptedCurrentTerms()) return '#/terms-gate';
   return null;
 });

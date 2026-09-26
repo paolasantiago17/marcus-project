@@ -56,6 +56,8 @@ function reportError(err) {
 const toParticipant = (r) => ({
   id: r.id, name: r.name, email: r.email, registeredAt: r.registered_at,
   termsVersion: r.terms_version, termsAcceptedAt: r.terms_accepted_at, points: r.points,
+  // Rows from before the access column existed count as approved.
+  access: r.access || 'approved',
 });
 const toImage = (r) => ({
   id: r.id, participantId: r.participant_id, source: r.source, credit: r.credit,
@@ -242,12 +244,32 @@ export const Store = {
     return state.currentParticipantId ? state.participants[state.currentParticipantId] : null;
   },
 
-  async register(name, email) {
-    await rpc('register_participant', { p_name: name, p_email: email });
+  // @queensu.ca addresses are approved straight away; any other address is
+  // 'pending' until an admin approves or rejects it.
+  async register(name, email, ageConfirmed) {
+    try {
+      await rpc('register_participant', { p_name: name, p_email: email, p_age_confirmed: ageConfirmed });
+    } catch (err) {
+      // Database not migrated yet (migrations-003): fall back to the old call.
+      if (!/could not find the function/i.test(err.message)) throw err;
+      await rpc('register_participant', { p_name: name, p_email: email });
+    }
     // An existing email may bring votes, images and reads with it.
     await loadStudent();
     changed();
     return this.currentParticipant();
+  },
+
+  // Returning participants pick their account back up with their email.
+  async signIn(email) {
+    await rpc('sign_in_participant', { p_email: email });
+    await loadStudent();
+    changed();
+    return this.currentParticipant();
+  },
+
+  isApproved() {
+    return this.currentParticipant()?.access === 'approved';
   },
 
   async acceptTerms() {
@@ -258,6 +280,18 @@ export const Store = {
   hasAcceptedCurrentTerms() {
     const p = this.currentParticipant();
     return !!(p && p.termsVersion === TERMS_VERSION);
+  },
+
+  // ---- participant access (non-@queensu.ca sign-ups) ----
+  pendingParticipants() {
+    return Object.values(state.participants).filter((p) => p.access === 'pending')
+      .sort((a, b) => a.registeredAt.localeCompare(b.registeredAt));
+  },
+
+  async setParticipantAccess(participantId, access) {
+    await rpc('admin_set_participant_access', { p_participant: participantId, p_access: access });
+    await loadAdmin();
+    changed();
   },
 
   async deleteMyData() {
