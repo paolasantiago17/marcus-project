@@ -154,7 +154,13 @@ function afterSignIn() {
   else Router.go(Store.hasAcceptedCurrentTerms() ? '#/submit' : '#/terms-gate');
 }
 
-export function login(root) {
+// Log in with a magic link. Step one asks for the email; step two says the
+// link is on its way and takes the code from the same email as a fallback
+// for when the link opens on another device.
+let loginEmail = '';
+
+export function login(root, { params = {} } = {}) {
+  const sent = params.step === 'sent' && loginEmail;
   root.innerHTML = `
     <div class="screen">
       <div class="topbar">
@@ -163,25 +169,59 @@ export function login(root) {
       </div>
       <div class="scroll" style="padding:34px 24px 0;">
         <p class="eyebrow">Welcome back</p>
+        ${sent ? `
+        <h2 class="h-serif" style="font-size:33px; line-height:1.08; margin-bottom:12px;">Check your email</h2>
+        <p style="margin:0 0 26px; font-weight:300; font-size:16px; line-height:1.65; color:#5B5449;">We sent a log-in link to <strong style="font-weight:500; color:#1B1916;">${esc(loginEmail)}</strong>. Tap it to log in. If it opens somewhere else, type the code from the same email here instead.</p>
+        <label style="display:block; margin:0 0 8px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C8375;">Code from the email</label>
+        <input type="text" id="login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" style="letter-spacing:.2em;" />
+        <p style="margin:12px 0 0; font-size:14px; font-weight:300; color:#8C8375;">Nothing yet? Check your spam folder, or <a href="#" id="login-resend" style="color:#A6842C; text-decoration:underline; text-underline-offset:3px;">send it again</a>.</p>` : `
         <h2 class="h-serif" style="font-size:33px; line-height:1.08; margin-bottom:12px;">Log in</h2>
-        <p style="margin:0 0 26px; font-weight:300; font-size:16px; line-height:1.65; color:#5B5449;">Enter the email you signed up with to pick up your entry, votes and points.</p>
+        <p style="margin:0 0 26px; font-weight:300; font-size:16px; line-height:1.65; color:#5B5449;">Enter the email you signed up with and we’ll send you a log-in link. No password needed.</p>
         <label style="display:block; margin:0 0 8px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#8C8375;">Email</label>
-        <input type="email" id="login-email" placeholder="you@queensu.ca" autocomplete="email" />
+        <input type="email" id="login-email" placeholder="you@queensu.ca" autocomplete="email" value="${esc(loginEmail)}" />`}
       </div>
       <div style="padding:18px 24px 28px; border-top:1px solid rgba(27,25,22,.08);">
-        <button class="btn btn-gold" id="login-btn">Log in</button>
-        <p style="margin:14px 0 0; text-align:center; font-size:14.5px; font-weight:300; color:#5B5449;">New here? <a href="#/register" style="color:#A6842C; text-decoration:underline; text-underline-offset:3px;">Sign up</a></p>
+        <button class="btn btn-gold" id="login-btn">${sent ? 'Log in' : 'Email me a log-in link'}</button>
+        <p style="margin:14px 0 0; text-align:center; font-size:14.5px; font-weight:300; color:#5B5449;">${sent
+          ? '<a href="#/login" style="color:#A6842C; text-decoration:underline; text-underline-offset:3px;">Use a different email</a>'
+          : 'New here? <a href="#/register" style="color:#A6842C; text-decoration:underline; text-underline-offset:3px;">Sign up</a>'}</p>
       </div>
     </div>`;
 
-  const emailEl = root.querySelector('#login-email');
   const btn = root.querySelector('#login-btn');
-  const go = async () => {
-    const email = emailEl.value.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('That email doesn’t look right.'); emailEl.focus(); return; }
+  const send = async (button) => {
+    const restore = busy(button, 'Sending…');
+    try {
+      await Store.sendLoginLink(loginEmail);
+    } catch (err) {
+      restore();
+      toast(/rate limit/i.test(err.message) ? 'Too many emails just now. Please wait a minute and try again.' : err.message, 3600);
+      return false;
+    }
+    restore();
+    return true;
+  };
+
+  if (!sent) {
+    const emailEl = root.querySelector('#login-email');
+    const go = async () => {
+      const email = emailEl.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('That email doesn’t look right.'); emailEl.focus(); return; }
+      loginEmail = email.toLowerCase();
+      if (await send(btn)) Router.go('#/login?step=sent');
+    };
+    btn.addEventListener('click', go);
+    emailEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    return;
+  }
+
+  const codeEl = root.querySelector('#login-code');
+  const verify = async () => {
+    const code = codeEl.value.replace(/\s/g, '');
+    if (!/^\d{6,10}$/.test(code)) { toast('Type the code from the email.'); codeEl.focus(); return; }
     const restore = busy(btn, 'Logging in…');
     try {
-      await Store.signIn(email);
+      await Store.verifyLoginCode(loginEmail, code);
     } catch (err) {
       restore();
       toast(err.message, 3600);
@@ -190,8 +230,19 @@ export function login(root) {
     intent = 'vote';
     afterSignIn();
   };
-  btn.addEventListener('click', go);
-  emailEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+  btn.addEventListener('click', verify);
+  codeEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') verify(); });
+  root.querySelector('#login-resend').addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (await send(e.currentTarget)) toast('Sent. Check your email.');
+  });
+}
+
+// Back from a magic link (see app.js): send them on, or explain what went wrong.
+export function finishLogin(result) {
+  if (result === 'ok') { intent = 'vote'; afterSignIn(); return; }
+  Router.go('#/login');
+  toast(result, 4200);
 }
 
 // Non-@queensu.ca sign-ups wait here until an admin approves or rejects them.

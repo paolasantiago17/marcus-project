@@ -34,6 +34,8 @@ export function photoStyle(photo) {
 
 let sb = null;
 let mode = 'student';
+// Outcome of coming back from a magic link: null, 'ok' or an error message.
+let loginResult = null;
 let state = emptyState();
 
 function emptyState() {
@@ -186,8 +188,10 @@ export const Store = {
   async init(nextMode) {
     mode = nextMode;
     if (!this.configured) throw new Error('Campus Canvas is not connected to its database yet.');
+    // Implicit flow so a magic link works even when it's opened in a
+    // different browser from the one that asked for it.
     sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-      auth: { storageKey: `cc-${mode}-auth`, persistSession: true, autoRefreshToken: true },
+      auth: { storageKey: `cc-${mode}-auth`, persistSession: true, autoRefreshToken: true, flowType: 'implicit' },
     });
     if (mode === 'student') {
       const { data: { session } } = await sb.auth.getSession();
@@ -196,6 +200,11 @@ export const Store = {
         if (error) throw new Error(`Could not start a session: ${error.message}`);
       }
       await loadStudent();
+      // Back from a magic link: the session now carries a verified email, so
+      // pick up the account that belongs to it.
+      if (!this.currentParticipant() && session?.user?.email) {
+        try { await this.claimAccount(); loginResult = 'ok'; } catch (err) { loginResult = err.message; }
+      }
     } else if (await this.isAdminSession()) {
       await loadAdmin();
     }
@@ -260,12 +269,33 @@ export const Store = {
     return this.currentParticipant();
   },
 
-  // Returning participants pick their account back up with their email.
-  async signIn(email) {
-    await rpc('sign_in_participant', { p_email: email });
+  // Returning participants log in with a magic link (or the code in the
+  // same email). Supabase Auth sends it; nothing happens here until they use it.
+  async sendLoginLink(email) {
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${location.origin}${location.pathname}?login=1` },
+    });
+    if (error) throw new Error(error.message);
+  },
+
+  async verifyLoginCode(email, code) {
+    const { error } = await sb.auth.verifyOtp({ email, token: code, type: 'email' });
+    if (error) throw new Error(/expired|invalid/i.test(error.message) ? 'That code has expired or isn’t right. Send a new one.' : error.message);
+    return this.claimAccount();
+  },
+
+  async claimAccount() {
+    await rpc('claim_participant');
     await loadStudent();
     changed();
     return this.currentParticipant();
+  },
+
+  takeLoginResult() {
+    const r = loginResult;
+    loginResult = null;
+    return r;
   },
 
   isApproved() {

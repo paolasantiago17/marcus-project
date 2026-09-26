@@ -248,15 +248,21 @@ begin
   return p;
 end $$;
 
-create or replace function public.sign_in_participant(p_email text)
+create or replace function public.claim_participant()
 returns public.participants
 language plpgsql security definer set search_path = public as $$
 declare
   v_uid uuid := auth.uid();
-  v_email citext := lower(btrim(p_email));
+  v_email citext;
   p public.participants;
 begin
   if v_uid is null then raise exception 'No session' using errcode = '42501'; end if;
+  -- Only an email the person proved they own (by clicking the emailed link
+  -- or typing its code) is trusted here; anonymous sessions have none.
+  select lower(email) into v_email from auth.users where id = v_uid and email_confirmed_at is not null;
+  if v_email is null or v_email = '' then
+    raise exception 'Open the log-in link we emailed you to continue' using errcode = '42501';
+  end if;
   select * into p from public.participants where email = v_email;
   if p.id is null then raise exception 'We couldn’t find an account with that email. Sign up instead?'; end if;
   update public.participants set auth_uid = null where auth_uid = v_uid and id <> p.id;
@@ -529,7 +535,7 @@ do $$
 declare fn text;
 begin
   foreach fn in array array[
-    'register_participant(text,text,boolean)', 'sign_in_participant(text)', 'accept_terms(text)', 'submit_entry(jsonb,text)',
+    'register_participant(text,text,boolean)', 'claim_participant()', 'accept_terms(text)', 'submit_entry(jsonb,text)',
     'cast_vote(uuid,text,text)', 'reset_my_votes()', 'set_test_points(int)',
     'mark_notice_read(uuid)', 'submit_feedback(text,text)', 'delete_my_data()',
     'admin_review_image(uuid,text,text)', 'admin_update_image(uuid,text,text)',

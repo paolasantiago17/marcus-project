@@ -22,6 +22,7 @@ const email = `smoke-${Date.now()}@queensu.ca`;
 const outsideEmail = `smoke-${Date.now()}@example.com`;
 const cleanupPaths = [];
 let uid = null;
+let returningUid = null;
 
 try {
   const anon = await student.auth.signInAnonymously();
@@ -40,9 +41,17 @@ try {
 
   const reg = await student.rpc('register_participant', { p_name: 'Smoke Test', p_email: email, p_age_confirmed: true });
   ok('register participant', !reg.error && reg.data.access === 'approved', reg.error?.message);
-  await rejects('log in with an unknown email is refused', student.rpc('sign_in_participant', { p_email: `nobody-${Date.now()}@queensu.ca` }));
-  const back = await student.rpc('sign_in_participant', { p_email: email.toUpperCase() });
-  ok('log back in with email', !back.error && back.data.id === reg.data.id, back.error?.message);
+  await rejects('anonymous session cannot claim an account', student.rpc('claim_participant'));
+  // Stand-in for the magic link: a confirmed email user in a second browser.
+  const returning = createClient(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, opts);
+  const pw = crypto.randomUUID();
+  const made = await service.auth.admin.createUser({ email: email.toUpperCase(), password: pw, email_confirm: true });
+  returningUid = made.data?.user?.id;
+  await returning.auth.signInWithPassword({ email, password: pw });
+  const back = await returning.rpc('claim_participant');
+  ok('verified email logs back in to its account', !back.error && back.data.id === reg.data.id, back.error?.message);
+  // Hand the account back to the first session for the rest of the checks.
+  await student.rpc('register_participant', { p_name: 'Smoke Test', p_email: email, p_age_confirmed: true });
 
   const items = [];
   for (let i = 0; i < 3; i++) {
@@ -111,6 +120,7 @@ try {
 } finally {
   await service.from('participants').delete().in('email', [email, outsideEmail]);
   if (uid) await service.auth.admin.deleteUser(uid);
+  if (returningUid) await service.auth.admin.deleteUser(returningUid);
   if (cleanupPaths.length) await service.storage.from('photos').remove(cleanupPaths);
   await service.from('audit_log').delete().or(`actor.eq.${email},actor.eq.${outsideEmail},detail->>title.eq.Smoke catalogue,detail->>note.eq.smoke`);
 }
