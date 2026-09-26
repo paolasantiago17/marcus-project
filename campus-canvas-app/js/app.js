@@ -10,7 +10,9 @@ import { terms } from './screens/terms.js';
 import { toast, statusScreen } from './ui.js';
 
 const NEEDS_PARTICIPANT = new Set(['submit', 'submitted', 'vote', 'notices', 'notice', 'feedback', 'account', 'terms']);
-const NEEDS_TERMS = new Set(['submit']);
+// The database refuses votes, notice reads and feedback until the current
+// Terms of Use are accepted (migrations-002), so those screens ask first too.
+const NEEDS_TERMS = new Set(['submit', 'vote', 'notices', 'notice', 'feedback']);
 
 Router.register('home', landing);
 Router.register('register', register);
@@ -30,7 +32,7 @@ Router.setGuard((name) => {
   if (NEEDS_PARTICIPANT.has(name) && !Store.currentParticipant()) return '#/register';
   // Non-@queensu.ca sign-ups can't take part until an admin approves them.
   if ((NEEDS_PARTICIPANT.has(name) || name === 'terms-gate') && Store.currentParticipant() && !Store.isApproved()) return '#/pending';
-  if (NEEDS_TERMS.has(name) && !Store.hasAcceptedCurrentTerms()) return '#/terms-gate';
+  if (NEEDS_TERMS.has(name) && !Store.hasAcceptedCurrentTerms()) return `#/terms-gate?next=${name}`;
   return null;
 });
 

@@ -9,6 +9,8 @@ const MAX_WORDS = 200;
 // three are valid" behaviour (FR-010, FR-016).
 let slots = [null, null, null];
 let activeSlot = 0;
+// Set for the confirmation screen shown straight after a successful submit.
+let justSubmitted = false;
 
 function freshSlot() { return { file: null, url: null, title: '', description: '' }; }
 function ensureSlots() { if (!slots.some(Boolean)) slots = [freshSlot(), freshSlot(), freshSlot()]; }
@@ -139,30 +141,44 @@ export function submit(root) {
   const submitBtn = root.querySelector('#submit-all');
   submitBtn.addEventListener('click', async () => {
     if (!slots.every(validSlot)) return;
-    const restore = busy(submitBtn, 'Uploading your photos…');
+    const restore = busy(submitBtn, 'Uploading photo 1 of 3…');
+    // Uploads can take a while on campus data; say how far along it is and
+    // warn before the tab is closed part-way through.
+    const stay = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', stay);
     try {
-      await Store.submitEntry(slots.map((s) => ({ file: s.file, title: s.title, description: s.description })));
+      await Store.submitEntry(
+        slots.map((s) => ({ file: s.file, title: s.title, description: s.description })),
+        (step) => { submitBtn.innerHTML = step <= 3 ? `Uploading photo ${step} of 3…` : 'Saving your entry…'; },
+      );
     } catch (err) {
       // NFR-004: a failed upload never reports success; the draft stays put.
       restore();
-      toast(`Couldn’t submit: ${err.message}`, 4000);
+      toast(`Your photos weren’t submitted: ${err.message} Please try again.`, 6000);
       return;
+    } finally {
+      window.removeEventListener('beforeunload', stay);
     }
     slots = [freshSlot(), freshSlot(), freshSlot()];
     activeSlot = 0;
+    justSubmitted = true;
     Router.go('#/submitted');
   });
 }
 
 export function submitted(root) {
+  const fresh = justSubmitted;
+  justSubmitted = false;
+  if (fresh) toast('Entry submitted. Thank you!', 3200);
   const mine = Store.myImages();
   const photos = mine.slice(0, 3);
   root.innerHTML = `
     <div class="screen" style="background:#15130F; color:#F3EEE3;">
       <div class="scroll" style="padding:56px 28px 0; text-align:center;">
-        <span style="width:60px; height:60px; border-radius:30px; background:#A6842C; display:inline-block; margin-bottom:34px;"></span>
+        <span style="width:64px; height:64px; border-radius:32px; background:#A6842C; display:inline-flex; align-items:center; justify-content:center; margin-bottom:22px;"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#15130F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <p style="margin:0 0 10px; font-size:12px; letter-spacing:.24em; text-transform:uppercase; color:#A6842C;">${fresh ? 'Submitted' : 'Entry received'}</p>
         <h2 class="h-serif" style="font-size:34px; line-height:1.1; margin-bottom:16px; color:#F7F2E7;">Your three are in.</h2>
-        <p style="margin:0 auto 36px; max-width:280px; font-size:16px; font-weight:300; line-height:1.7; color:#CFC7B6;">All three photographs and descriptions saved. An ArtUP curator reviews every submission before it enters voting.</p>
+        <p style="margin:0 auto 36px; max-width:300px; font-size:16px; font-weight:300; line-height:1.7; color:#CFC7B6;">We’ve received all three photographs and descriptions. An ArtUP curator reviews every submission before it enters voting, and you can follow each photo’s status in your profile.</p>
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:36px;">
           ${photos.map((img) => `<div style="width:100%; aspect-ratio:.8; border-radius:12px; ${photoStyle(img.photo)} display:block;"></div>`).join('')}
         </div>
@@ -176,8 +192,9 @@ export function submitted(root) {
       </div>
       <div style="padding:20px 28px 34px;">
         <button class="btn btn-gold-dark" id="start-voting">Start voting</button>
-        <p style="margin:14px 0 0; text-align:center; font-size:13.5px; font-weight:300; color:#9A8F79;">We'll notify you when your photos are reviewed.</p>
+        <button class="btn btn-outline-light" id="see-status" style="margin-top:12px;">See my submissions</button>
       </div>
     </div>`;
   root.querySelector('#start-voting').addEventListener('click', () => Router.go('#/vote'));
+  root.querySelector('#see-status').addEventListener('click', () => Router.go('#/account'));
 }

@@ -279,15 +279,20 @@ export function pending(root) {
   root.querySelector('#pending-other').addEventListener('click', () => Router.go('#/register'));
 }
 
-export function termsGate(root) {
+// Screens a student can be sent on to once they accept the terms.
+const AFTER_TERMS = new Set(['submit', 'vote', 'notices', 'feedback']);
+
+export function termsGate(root, { params = {} } = {}) {
   const p = Store.currentParticipant();
+  const asked = params.next === 'notice' ? 'notices' : params.next;
+  const next = AFTER_TERMS.has(asked) ? asked : (intent === 'vote' ? 'vote' : 'submit');
   const isUpdate = !!(p && p.termsVersion && p.termsVersion !== Store.TERMS_VERSION);
   // Fixed-height screen so the document scrolls inside #terms-scroll and
   // "read to the end" is meaningful.
   root.innerHTML = `
     <div class="screen screen-fixed">
       <div style="padding:14px 24px 16px; border-bottom:1px solid rgba(27,25,22,.10); display:flex; align-items:center; justify-content:space-between;">
-        <span style="font-size:12.5px; letter-spacing:.20em; text-transform:uppercase; color:#8C8375;">${isUpdate ? 'Updated terms' : 'Step 2 of 3'}</span>
+        <span style="font-size:12.5px; letter-spacing:.20em; text-transform:uppercase; color:#8C8375;">${isUpdate ? 'Updated terms' : next === 'submit' ? 'Step 2 of 3' : 'Before you vote'}</span>
         <span style="font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:#A6842C;">Updated ${TERMS_LAST_UPDATED}</span>
       </div>
       <div class="scroll" id="terms-scroll" style="padding:26px 24px 12px; background:#fff; min-height:0;">
@@ -337,6 +342,6 @@ export function termsGate(root) {
       return;
     }
     toast('Terms accepted.');
-    Router.go('#/submit');
+    Router.go(`#/${next}`);
   });
 }

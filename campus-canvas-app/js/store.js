@@ -340,11 +340,17 @@ export const Store = {
 
   // entries: [{ file, title, description }] x3. Resolves only once the
   // database has all three rows (FR-016); uploads are cleaned up on failure.
-  async submitEntry(entries) {
+  // onProgress(step) reports 1..3 as each photo uploads, then 4 while the
+  // entry itself is saved.
+  async submitEntry(entries, onProgress = () => {}) {
     const { data: { user } } = await sb.auth.getUser();
     const uploaded = [];
     try {
-      for (const e of entries) uploaded.push(await uploadPhoto(`submissions/${user.id}`, e.file));
+      for (const e of entries) {
+        onProgress(uploaded.length + 1);
+        uploaded.push(await uploadPhoto(`submissions/${user.id}`, e.file));
+      }
+      onProgress(entries.length + 1);
       const items = entries.map((e, i) => ({
         storage_path: uploaded[i].path, photo_url: uploaded[i].url,
         title: e.title.trim(), description: e.description.trim(),
