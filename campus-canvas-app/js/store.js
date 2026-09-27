@@ -291,11 +291,18 @@ export const Store = {
   // Returning participants log in with a magic link (or the code in the
   // same email). Supabase Auth sends it; nothing happens here until they use it.
   async sendLoginLink(email) {
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${location.origin}${location.pathname}?login=1` },
-    });
-    if (error) throw new Error(error.message);
+    // Supabase waits on its mail server before answering; if that stalls,
+    // stop waiting rather than leave the button spinning.
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error(
+      'Sending the email is taking too long. Please try again in a minute. If an email does arrive, you can still use it.',
+    )), 20000));
+    const { error } = await Promise.race([
+      sb.auth.signInWithOtp({ email, options: { emailRedirectTo: `${location.origin}${location.pathname}?login=1` } }),
+      timeout,
+    ]);
+    if (error) throw new Error(/sending|smtp|email/i.test(error.message) && error.status >= 500
+      ? 'We couldn’t send the log-in email just now. Please try again in a minute.'
+      : error.message);
   },
 
   async verifyLoginCode(email, code) {
