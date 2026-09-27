@@ -350,6 +350,11 @@ export const Store = {
     changed();
   },
 
+  // Emails an approved non-@queensu.ca student that they can now come in.
+  async emailAccessApproved(participantId) {
+    await callEmailApi('notify-access', { participantId });
+  },
+
   async deleteMyData() {
     const paths = await rpc('delete_my_data');
     if (paths?.length) await sb.storage.from(BUCKET).remove(paths);

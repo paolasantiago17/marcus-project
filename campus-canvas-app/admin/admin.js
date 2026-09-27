@@ -43,6 +43,14 @@ function emailStudent(participantId) {
     .catch((err) => toast(`Review saved, but the student wasn’t emailed: ${err.message}`, 6000));
 }
 
+// Lets an approved non-@queensu.ca student know they can come in. The
+// approval is already saved; this only reports whether the email went.
+function emailApproval(participantId, done) {
+  Store.emailAccessApproved(participantId)
+    .then(() => toast(`${done} and emailed the student.`, 3200))
+    .catch((err) => toast(`${done}, but the student wasn’t emailed: ${err.message}`, 6000));
+}
+
 function downloadCSV(filename, csv) {
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -338,7 +346,7 @@ function participantsTab() {
 function accessCell(p) {
   const link = (access, label) => `<span data-access="${p.id}:${access}" style="margin-left:8px; font-size:11px; color:#A6842C; cursor:pointer; text-decoration:underline;">${label}</span>`;
   if (/@queensu\.ca$/i.test(p.email)) return '<span style="color:#6E6659;">Queen’s</span>';
-  if (p.access === 'approved') return `Approved${link('rejected', 'Reject')}`;
+  if (p.access === 'approved') return `Approved${link('rejected', 'Reject')}<span data-approval-email="${p.id}" style="margin-left:8px; font-size:11px; color:#A6842C; cursor:pointer; text-decoration:underline;">Send approval email</span>`;
   if (p.access === 'rejected') return `<span style="color:#C4543A;">Rejected</span>${link('approved', 'Approve')}`;
   return `<span style="color:#A6842C;">Pending</span>`;
 }
@@ -594,9 +602,13 @@ function wireEvents() {
     again.setSelectionRange(again.value.length, again.value.length);
   });
 
-  root.querySelectorAll('[data-access]').forEach((el) => el.addEventListener('click', (e) => {
+  root.querySelectorAll('[data-access]').forEach((el) => el.addEventListener('click', async (e) => {
     const [id, access] = el.dataset.access.split(':');
-    act(e.currentTarget, '…', () => Store.setParticipantAccess(id, access), access === 'approved' ? 'Participant approved.' : 'Participant rejected.');
+    if (access !== 'approved') return act(e.currentTarget, '…', () => Store.setParticipantAccess(id, access), 'Participant rejected.');
+    if (await act(e.currentTarget, '…', () => Store.setParticipantAccess(id, access))) emailApproval(id, 'Approved');
+  }));
+  root.querySelectorAll('[data-approval-email]').forEach((el) => el.addEventListener('click', () => {
+    emailApproval(el.dataset.approvalEmail, 'Still approved');
   }));
 
   // ---- notices / feedback ----
