@@ -507,6 +507,13 @@ export const Store = {
       });
   },
 
+  // Voters' written notes, newest first, with the photo and who wrote it.
+  allNotes() {
+    return state.votes.filter((v) => v.value === 'note' && v.note)
+      .sort((a, b) => b.votedAt.localeCompare(a.votedAt))
+      .map((v) => ({ ...v, image: state.images[v.imageId], author: state.participants[v.participantId] }));
+  },
+
   async resetMyVotes() {
     const points = await rpc('reset_my_votes');
     const p = this.currentParticipant();

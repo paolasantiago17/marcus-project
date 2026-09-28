@@ -74,6 +74,7 @@ function render() {
         ${navItem('upload', 'Add photos', uploadQueue.length)}
         ${navItem('rankings', 'Rankings')}
         ${navItem('participants', 'Participants', Store.pendingParticipants().length, true)}
+        ${navItem('notes', 'Voter notes', Store.allNotes().length)}
         ${navItem('notices', 'Notices')}
         ${navItem('feedback', 'Feedback', Store.state.feedback.filter((f) => f.status === 'open').length, true)}
         ${navItem('exports', 'Exports')}
@@ -101,6 +102,7 @@ function tabContent() {
   if (tab === 'upload') return uploadTab();
   if (tab === 'rankings') return rankingsTab();
   if (tab === 'participants') return participantsTab();
+  if (tab === 'notes') return notesTab();
   if (tab === 'notices') return noticesTab();
   if (tab === 'feedback') return feedbackTab();
   if (tab === 'exports') return exportsTab();
@@ -349,6 +351,27 @@ function accessCell(p) {
   if (p.access === 'approved') return `Approved${link('rejected', 'Reject')}<span data-approval-email="${p.id}" style="margin-left:8px; font-size:11px; color:#A6842C; cursor:pointer; text-decoration:underline;">Send approval email</span>`;
   if (p.access === 'rejected') return `<span style="color:#C4543A;">Rejected</span>${link('approved', 'Approve')}`;
   return `<span style="color:#A6842C;">Pending</span>`;
+}
+
+// What voters wrote when they chose "Note +3" on a photo.
+function notesTab() {
+  const notes = Store.allNotes();
+  return `
+    <div class="admin-header">
+      <div><p class="eyebrow">From the voting cards</p><h3>Voter notes</h3></div>
+      <span class="chip">${notes.length} note${notes.length === 1 ? '' : 's'}</span>
+    </div>
+    <div style="padding:20px 32px 32px; display:grid; gap:12px;">
+      ${notes.length ? notes.map((n) => `
+        <div class="card" style="display:grid; grid-template-columns:96px 1fr; gap:18px; padding:14px; align-items:start;">
+          <a href="${esc(n.image?.photo || '')}" target="_blank" rel="noopener"><div style="width:96px; aspect-ratio:1.3; border-radius:8px; ${photoStyle(n.image?.photo)}"></div></a>
+          <div>
+            <p style="margin:0 0 6px; font-size:12px; font-weight:300; color:#8C8375;">On <span style="color:#1B1916; font-weight:400;">${esc(n.image?.title || 'a removed photo')}</span>${n.image?.credit ? ` by ${esc(n.image.credit)}` : ''}</p>
+            <p style="margin:0 0 10px; font-size:14px; font-weight:300; line-height:1.65; color:#26231E; white-space:pre-wrap;">${esc(n.note)}</p>
+            <p style="margin:0; font-size:11.5px; font-weight:300; color:#8C8375;">${esc(n.author?.name || 'Unknown')}${n.author?.email ? ` · ${esc(n.author.email)}` : ''} · ${new Date(n.votedAt).toLocaleString()}</p>
+          </div>
+        </div>`).join('') : '<p style="color:#8C8375; text-align:center; padding:40px;">No notes yet. They show up here when voters tap “Note +3” on a photo.</p>'}
+    </div>`;
 }
 
 function noticesTab() {
