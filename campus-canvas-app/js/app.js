@@ -3,13 +3,14 @@ import { Router } from './router.js';
 import { landing, register, termsGate, login, pending, finishLogin } from './screens/onboarding.js';
 import { submit, submitted, replace } from './screens/submit.js';
 import { vote } from './screens/vote.js';
+import { myVotes } from './screens/myvotes.js';
 import { notices, noticeDetail } from './screens/notices.js';
 import { feedback } from './screens/feedback.js';
 import { account } from './screens/account.js';
 import { terms } from './screens/terms.js';
 import { toast, statusScreen, photoUpdateSheet } from './ui.js';
 
-const NEEDS_PARTICIPANT = new Set(['submit', 'submitted', 'replace', 'vote', 'notices', 'notice', 'feedback', 'account', 'terms']);
+const NEEDS_PARTICIPANT = new Set(['submit', 'submitted', 'replace', 'vote', 'my-votes', 'notices', 'notice', 'feedback', 'account', 'terms']);
 // The database refuses votes, notice reads and feedback until the current
 // Terms of Use are accepted (migrations-002), so those screens ask first too.
 const NEEDS_TERMS = new Set(['submit', 'replace', 'vote', 'notices', 'notice', 'feedback']);
@@ -23,6 +24,7 @@ Router.register('submit', submit);
 Router.register('submitted', submitted);
 Router.register('replace', replace);
 Router.register('vote', vote);
+Router.register('my-votes', myVotes);
 Router.register('notices', notices);
 Router.register('notice', noticeDetail);
 Router.register('feedback', feedback);
@@ -38,7 +40,7 @@ Router.setGuard((name) => {
 });
 
 const root = document.getElementById('app');
-const LIVE_ROUTES = new Set(['vote', 'notices', 'account']);
+const LIVE_ROUTES = new Set(['vote', 'my-votes', 'notices', 'account']);
 
 window.addEventListener('cc:error', (e) => toast(e.detail, 3200));
 // Tell a student once when curators accept or reject their photos. Checked

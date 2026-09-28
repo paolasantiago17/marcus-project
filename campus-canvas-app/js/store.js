@@ -41,7 +41,7 @@ let state = emptyState();
 function emptyState() {
   return {
     participants: {}, images: {}, votes: [], notices: [], noticeReads: [],
-    feedback: [], auditLog: [], currentParticipantId: null,
+    feedback: [], auditLog: [], publicNotes: [], currentParticipantId: null,
   };
 }
 
@@ -69,6 +69,8 @@ const toImage = (r) => ({
 });
 const toVote = (r) => ({
   participantId: r.participant_id, imageId: r.image_id, value: r.value, note: r.note, votedAt: r.voted_at,
+  // Notes from before sharing existed stay private.
+  noteStatus: r.note_status || 'private',
 });
 const toNotice = (r) => ({
   id: r.id, title: r.title, body: r.body, category: r.category, ctaLabel: r.cta_label,
@@ -150,16 +152,26 @@ async function uploadPhoto(folder, file) {
 
 // ---- loading ----
 
+// Approved voter notes, without who wrote them. Until migrations-005 is run
+// the function doesn't exist, which just means nothing is shared yet.
+async function loadPublicNotes() {
+  const { data, error } = await sb.rpc('public_notes');
+  if (error) return [];
+  return data.map((r) => ({ imageId: r.image_id, note: r.note, votedAt: r.voted_at }));
+}
+
 async function loadStudent() {
   const { data: { user } } = await sb.auth.getUser();
-  const [participant, images, votes, notices, reads] = await Promise.all([
+  const [participant, images, votes, notices, reads, publicNotes] = await Promise.all([
     q(sb.from('participants').select('*').eq('auth_uid', user.id).maybeSingle()),
     q(sb.from('images').select('*')),
     q(sb.from('votes').select('*')),
     q(sb.from('notices').select('*').eq('status', 'live')),
     q(sb.from('notice_reads').select('*')),
+    loadPublicNotes(),
   ]);
   const next = emptyState();
+  next.publicNotes = publicNotes;
   next.images = byId(images, toImage);
   next.votes = votes.map(toVote);
   next.notices = notices.map(toNotice);
@@ -491,7 +503,10 @@ export const Store = {
     const p = this.currentParticipant();
     if (!p) throw new Error('Not registered');
     if (state.votes.some((v) => v.participantId === p.id && v.imageId === imageId)) return;
-    const vote = { participantId: p.id, imageId, value, note: note || '', votedAt: new Date().toISOString() };
+    const vote = {
+      participantId: p.id, imageId, value, note: note || '', votedAt: new Date().toISOString(),
+      noteStatus: value === 'note' ? 'pending' : 'private',
+    };
     const before = p.points;
     state.votes.push(vote);
     p.points += value === 'note' ? 3 : 1;
@@ -507,6 +522,26 @@ export const Store = {
       });
   },
 
+  // What the current participant voted on, newest first, with the photo.
+  myVotes() {
+    const id = state.currentParticipantId;
+    return state.votes.filter((v) => v.participantId === id && state.images[v.imageId])
+      .sort((a, b) => b.votedAt.localeCompare(a.votedAt))
+      .map((v) => ({ ...v, image: state.images[v.imageId] }));
+  },
+
+  // Everything the current participant can vote on (all accepted photos
+  // except their own), voted or not.
+  votablePhotos() {
+    const id = state.currentParticipantId;
+    return this.acceptedImages().filter((img) => img.participantId !== id);
+  },
+
+  // Approved notes on a photo, shown to everyone without a name.
+  notesFor(imageId) {
+    return state.publicNotes.filter((n) => n.imageId === imageId);
+  },
+
   // Voters' written notes, newest first, with the photo and who wrote it.
   allNotes() {
     return state.votes.filter((v) => v.value === 'note' && v.note)
@@ -514,17 +549,11 @@ export const Store = {
       .map((v) => ({ ...v, image: state.images[v.imageId], author: state.participants[v.participantId] }));
   },
 
-  async resetMyVotes() {
-    const points = await rpc('reset_my_votes');
-    const p = this.currentParticipant();
-    state.votes = state.votes.filter((v) => v.participantId !== p.id);
-    p.points = points;
-    changed();
-  },
-
-  async setTestPoints(target) {
-    const p = this.currentParticipant();
-    p.points = await rpc('set_test_points', { p_target: target });
+  // Admin: share a note anonymously ('approved'), keep it hidden
+  // ('rejected'), or put it back in the queue ('pending').
+  async setNoteStatus(participantId, imageId, status) {
+    await rpc('admin_set_note_status', { p_participant: participantId, p_image: imageId, p_status: status });
+    await loadAdmin();
     changed();
   },
 

@@ -1,16 +1,18 @@
 import { Store, photoStyle } from '../store.js';
 import { Router } from '../router.js';
-import { bottomNav, avatarBtn, toast, busy, esc, preloadPhotos } from '../ui.js';
+import { bottomNav, avatarBtn, esc, preloadPhotos } from '../ui.js';
 
 let celebrating = false;
 let touchStartX = null;
 let writingNote = false;
 let lastGain = null;
+// Which card's notes are expanded, so "Show all" doesn't carry to the next photo.
+let notesOpenFor = null;
 
 export function vote(root) {
   const p = Store.currentParticipant();
   const queue = Store.votingQueue();
-  const totalAccepted = Store.acceptedImages().length;
+  const totalAccepted = Store.votablePhotos().length;
   const votedCount = totalAccepted - queue.length;
   const tier = Store.tierFor(p.points);
   const finished = !celebrating && queue.length === 0;
@@ -50,45 +52,16 @@ export function vote(root) {
       </div>
 
       <div style="padding:14px 22px 0;">
-        <p style="margin:0 0 4px; text-align:center; font-size:13.5px; font-weight:300; color:#8C8375;">You've voted on <span style="font-weight:500; color:#1B1916;">${votedCount}</span> of <span style="font-weight:500; color:#1B1916;">${totalAccepted}</span> available images.</p>
-        ${!celebrating ? `<p style="margin:0 0 12px; text-align:center;"><span id="jump-points-btn" style="font-size:12.5px; font-weight:300; color:#8C8375; text-decoration:underline; cursor:pointer;">Jump to 25 pts (testing)</span></p>` : ''}
+        <p style="margin:0 0 12px; text-align:center; font-size:13.5px; font-weight:300; color:#8C8375;">You've voted on <span style="font-weight:500; color:#1B1916;">${votedCount}</span> of <span style="font-weight:500; color:#1B1916;">${totalAccepted}</span> photos${votedCount ? ` · <a href="#/my-votes" style="color:#A6842C; text-decoration:underline;">See my votes</a>` : ''}</p>
         ${bottomNav('vote')}
       </div>
     </div>
     ${voting && current && writingNote ? noteSheetHTML(current) : ''}`;
 
-  root.querySelector('#jump-points-btn')?.addEventListener('click', async (e) => {
-    const before = p.points;
-    busy(e.currentTarget, 'Adding points…');
-    try {
-      await Store.setTestPoints(25);
-    } catch (err) {
-      toast(err.message, 3200);
-      vote(root);
-      return;
-    }
-    const after = Store.currentParticipant().points;
-    const t = Store.tierFor(before);
-    if (before < t.next.at && after >= t.next.at) celebrating = true;
-    else lastGain = after - before;
-    vote(root);
-  });
-
   if (celebrating) {
     root.querySelector('#dismiss-celebrate')?.addEventListener('click', () => { celebrating = false; vote(root); });
     return;
   }
-
-  root.querySelector('#reset-votes-btn')?.addEventListener('click', async (e) => {
-    busy(e.currentTarget, 'Resetting…');
-    try {
-      await Store.resetMyVotes();
-      toast('Your votes were reset — the queue is back to full.');
-    } catch (err) {
-      toast(err.message, 3200);
-    }
-    vote(root);
-  });
 
   if (voting && current) {
     const card = root.querySelector('#vote-card');
@@ -105,6 +78,7 @@ export function vote(root) {
     root.querySelector('#pass-btn')?.addEventListener('click', () => doVote('pass'));
     root.querySelector('#like-btn')?.addEventListener('click', () => doVote('like'));
     root.querySelector('#note-btn')?.addEventListener('click', () => { writingNote = true; vote(root); });
+    root.querySelector('#notes-more')?.addEventListener('click', () => { notesOpenFor = current.id; vote(root); });
 
     if (card) {
       card.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
@@ -148,6 +122,7 @@ function votingHTML(img, remaining) {
         <p class="h-serif" style="font-size:21px; line-height:1.25; margin-bottom:4px;">${esc(img.title)}</p>
         <p style="margin:0 0 12px; font-size:13.5px; font-weight:300; letter-spacing:.06em; color:#8C8375;">by ${esc(img.credit || 'a student')}</p>
         <p style="margin:0; font-size:15px; font-weight:300; line-height:1.65; color:#4A443A;">${esc(img.description)}</p>
+        ${notesHTML(img)}
       </div>
     </div>
     <div style="display:flex; align-items:center; justify-content:center; gap:30px; margin-top:20px;">
@@ -159,13 +134,37 @@ function votingHTML(img, remaining) {
   `;
 }
 
+// Approved notes from other voters, shown without a name. Collapsed to the
+// newest one (two lines at most) so Like and Pass stay on small screens.
+function notesHTML(img) {
+  const notes = Store.notesFor(img.id);
+  if (!notes.length) return '';
+  const open = notesOpenFor === img.id;
+  const shown = open ? notes : notes.slice(0, 1);
+  const clamp = open ? '' : 'display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;';
+  const canExpand = !open && (notes.length > 1 || notes[0].note.length > 80);
+  return `
+    <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(27,25,22,.08);">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+        <span style="font-size:11.5px; letter-spacing:.18em; text-transform:uppercase; color:#A6842C;">What voters noticed</span>
+        ${canExpand ? `<button id="notes-more" style="border:none; background:none; padding:0; font-size:13px; color:#A6842C; text-decoration:underline; cursor:pointer;">${notes.length > 1 ? `All ${notes.length} notes` : 'Read more'}</button>` : ''}
+      </div>
+      ${shown.map((n) => `
+        <div style="margin-bottom:10px; padding-left:12px; border-left:2px solid rgba(166,132,44,.35);">
+          <p style="margin:0 0 2px; font-size:14.5px; font-weight:300; line-height:1.55; color:#26231E; white-space:pre-wrap; ${clamp}">“${esc(n.note)}”</p>
+          <p style="margin:0; font-size:12px; letter-spacing:.08em; color:#8C8375;">Anonymous</p>
+        </div>`).join('')}
+    </div>`;
+}
+
 function noteSheetHTML(img) {
   return `
     <div id="note-overlay" class="sheet-overlay">
       <div class="sheet" style="padding:26px 24px 28px;">
         <p class="eyebrow" style="letter-spacing:.20em; margin-bottom:6px;">Note on “${esc(img.title)}”</p>
         <h3 class="h-serif" style="font-size:24px; line-height:1.15; margin-bottom:18px;">What stands out to you?</h3>
-        <textarea id="note-text" rows="4" placeholder="Say what you like about this one…" style="border:1px solid rgba(27,25,22,.14); background:#FFFFFF; margin-bottom:16px;"></textarea>
+        <textarea id="note-text" rows="4" placeholder="Say what you like about this one…" style="border:1px solid rgba(27,25,22,.14); background:#FFFFFF; margin-bottom:10px;"></textarea>
+        <p style="margin:0 0 16px; font-size:13px; font-weight:300; line-height:1.55; color:#8C8375;">Once a curator approves it, your note may appear under this photo for other voters, shown as “Anonymous” without your name.</p>
         <button id="note-submit" class="btn btn-gold" disabled style="margin-bottom:12px;">Add note (+3 pts)</button>
         <button id="note-cancel" class="btn btn-outline">Cancel</button>
       </div>
@@ -220,7 +219,7 @@ function finishedHTML() {
     <div style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px 0 20px;">
       <span style="width:56px; height:56px; border-radius:28px; border:1px solid #A6842C; display:block; margin-bottom:26px;"></span>
       <h3 class="h-serif" style="font-size:29px; line-height:1.15; margin-bottom:14px;">Nicely done.</h3>
-      <p style="margin:0 0 22px; max-width:270px; font-size:15.5px; font-weight:300; line-height:1.7; color:#5B5449;">You've voted on all currently available images. Check back as new images are added.</p>
-      <span id="reset-votes-btn" style="font-size:13px; letter-spacing:.10em; text-transform:uppercase; color:#8C8375; cursor:pointer; text-decoration:underline;">Reset my votes (testing)</span>
+      <p style="margin:0 0 22px; max-width:270px; font-size:15.5px; font-weight:300; line-height:1.7; color:#5B5449;">You've voted on every photo so far. Check back as new ones are added.</p>
+      <a href="#/my-votes" class="btn btn-outline" style="width:auto; padding:0 28px; display:inline-flex; align-items:center; justify-content:center;">See my votes</a>
     </div>`;
 }

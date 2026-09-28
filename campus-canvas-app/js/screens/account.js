@@ -57,29 +57,17 @@ export function account(root) {
 
         <div style="border-top:1px solid rgba(27,25,22,.10);">
           <div data-nav="#/vote" class="acct-row"><span>Rewards &amp; progress</span><span style="color:#8C8375;">&rarr;</span></div>
+          <div data-nav="#/my-votes" class="acct-row"><span>My votes</span><span style="color:#8C8375;">${Store.myVotes().length} &rarr;</span></div>
           <div data-nav="#/notices" class="acct-row"><span>Notices</span>${unread ? `<span style="height:22px; min-width:22px; padding:0 7px; border-radius:11px; background:#C4543A; color:#FFFDF8; font-size:12.5px; display:flex; align-items:center; justify-content:center;">${unread}</span>` : `<span style="color:#8C8375;">&rarr;</span>`}</div>
           <div data-nav="#/feedback" class="acct-row"><span>Send feedback</span><span style="color:#8C8375;">&rarr;</span></div>
           <div data-nav="#/terms" class="acct-row"><span>Terms of Use</span><span style="font-size:13.5px; color:${p.termsVersion === Store.TERMS_VERSION ? '#8C8375' : '#C4543A'};">${p.termsVersion === Store.TERMS_VERSION ? 'Accepted' : p.termsVersion ? 'Updated' : 'Not accepted'} &rarr;</span></div>
           <div class="acct-row"><span>Privacy</span><span style="color:#8C8375;">&rarr;</span></div>
-          <div id="reset-votes" class="acct-row" style="cursor:pointer;"><span>Reset my votes (testing)</span><span style="color:#8C8375;">&rarr;</span></div>
           <div id="delete-data" class="acct-row" style="color:#C4543A; cursor:pointer;"><span>Delete my data</span><span>&rarr;</span></div>
         </div>
         <p style="margin:24px 0 26px; font-size:13px; font-weight:300; line-height:1.7; color:#8C8375;">ArtUP Campus Canvas · Queen's University 2027 pilot · Build 1.0.4</p>
       </div>
     </div>
     <style>.acct-row{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid rgba(27,25,22,.07);font-size:16px;font-weight:300;cursor:pointer;}</style>`;
-
-  root.querySelector('#reset-votes').addEventListener('click', async (e) => {
-    if (!confirm('Reset your votes? This clears everything you\'ve voted on (and the points earned from voting) so the queue refills — your registration and submitted photos are untouched.')) return;
-    busy(e.currentTarget, '<span>Resetting…</span>');
-    try {
-      await Store.resetMyVotes();
-      toast('Your votes were reset.');
-    } catch (err) {
-      toast(err.message, 3200);
-    }
-    account(root);
-  });
 
   root.querySelector('#delete-data').addEventListener('click', async (e) => {
     if (!confirm('Delete your Campus Canvas data? This permanently removes your registration, submitted photos, votes and feedback.')) return;

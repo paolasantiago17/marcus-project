@@ -65,6 +65,8 @@ create table if not exists public.votes (
   image_id       uuid not null references public.images on delete cascade,
   value          text not null check (value in ('like', 'pass', 'note')),
   note           text not null default '',
+  -- private (never shown), pending (waiting for an admin), approved, rejected
+  note_status    text not null default 'private' check (note_status in ('private', 'pending', 'approved', 'rejected')),
   voted_at       timestamptz not null default now(),
   primary key (participant_id, image_id)
 );
@@ -340,8 +342,9 @@ begin
   if v_img.id is null or v_img.status <> 'accepted' then raise exception 'That image is not open for voting'; end if;
   if v_img.participant_id = p.id then raise exception 'You cannot vote on your own photo'; end if;
 
-  insert into public.votes (participant_id, image_id, value, note)
-  values (p.id, p_image, p_value, coalesce(btrim(p_note), ''))
+  insert into public.votes (participant_id, image_id, value, note, note_status)
+  values (p.id, p_image, p_value, coalesce(btrim(p_note), ''),
+          case when p_value = 'note' then 'pending' else 'private' end)
   on conflict do nothing;
   get diagnostics v_rows = row_count;
 
@@ -354,36 +357,15 @@ begin
   return p.points;
 end $$;
 
-create or replace function public.reset_my_votes() returns int
-language plpgsql security definer set search_path = public as $$
-declare
-  p public.participants := public.require_agreed_participant();
-  v_reclaim int;
-  v_count int;
-begin
-  select coalesce(sum(case when value = 'note' then 3 else 1 end), 0), count(*)
-  into v_reclaim, v_count from public.votes where participant_id = p.id;
-  delete from public.votes where participant_id = p.id;
-  update public.participants set points = greatest(0, points - v_reclaim)
-  where id = p.id returning points into p.points;
-  insert into public.audit_log (actor, action, entity, detail)
-  values (p.email, 'reset_votes', p.id::text, jsonb_build_object('removed', v_count));
-  return p.points;
-end $$;
-
--- Testing aid for the tier/reward UI; remove before a real campus launch.
-create or replace function public.set_test_points(p_target int) returns int
-language plpgsql security definer set search_path = public as $$
-declare p public.participants := public.require_agreed_participant();
-begin
-  if p_target > p.points then
-    update public.participants set points = least(p_target, 1000)
-    where id = p.id returning points into p.points;
-    insert into public.audit_log (actor, action, entity, detail)
-    values (p.email, 'add_test_points', p.id::text, jsonb_build_object('total', p.points));
-  end if;
-  return p.points;
-end $$;
+-- Approved notes for photos in voting. Never says who wrote them.
+create or replace function public.public_notes()
+returns table (image_id uuid, note text, voted_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select v.image_id, v.note, v.voted_at
+  from public.votes v join public.images i on i.id = v.image_id
+  where v.value = 'note' and v.note_status = 'approved' and i.status = 'accepted'
+  order by v.voted_at desc;
+$$;
 
 create or replace function public.mark_notice_read(p_notice uuid) returns void
 language plpgsql security definer set search_path = public as $$
@@ -474,6 +456,20 @@ begin
         updated_at = now();
   insert into public.audit_log (actor, action, entity, detail)
   values (v_admin, 'review_image', p_image::text, jsonb_build_object('status', p_status, 'note', p_note));
+end $$;
+
+create or replace function public.admin_set_note_status(p_participant uuid, p_image uuid, p_status text)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare v_admin text := public.require_admin();
+begin
+  if p_status not in ('pending', 'approved', 'rejected') then raise exception 'Unknown status'; end if;
+  update public.votes set note_status = p_status
+  where participant_id = p_participant and image_id = p_image and value = 'note' and note_status <> 'private';
+  if not found then raise exception 'That note can''t be shared'; end if;
+  insert into public.audit_log (actor, action, entity, detail)
+  values (v_admin, 'note_status', p_image::text,
+          jsonb_build_object('status', p_status, 'participant', p_participant));
 end $$;
 
 create or replace function public.admin_set_participant_access(p_participant uuid, p_access text)
@@ -569,12 +565,13 @@ declare fn text;
 begin
   foreach fn in array array[
     'register_participant(text,text,boolean)', 'claim_participant()', 'accept_terms(text)', 'submit_entry(jsonb,text)', 'replace_rejected_image(uuid,text,text,text,text)',
-    'cast_vote(uuid,text,text)', 'reset_my_votes()', 'set_test_points(int)',
+    'cast_vote(uuid,text,text)', 'public_notes()',
     'mark_notice_read(uuid)', 'submit_feedback(text,text)', 'delete_my_data()',
     'admin_review_image(uuid,text,text)', 'admin_update_image(uuid,text,text)',
     'admin_add_catalog_image(text,text,text,text,text)',
     'admin_publish_notice(text,text,text,text,text)', 'admin_retire_notice(uuid)',
-    'admin_set_feedback_status(uuid,text)', 'admin_set_participant_access(uuid,text)'
+    'admin_set_feedback_status(uuid,text)', 'admin_set_participant_access(uuid,text)',
+    'admin_set_note_status(uuid,uuid,text)'
   ] loop
     execute format('revoke all on function public.%s from public, anon', fn);
     execute format('grant execute on function public.%s to authenticated', fn);

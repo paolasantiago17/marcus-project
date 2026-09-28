@@ -9,6 +9,7 @@ let reviewIndex = 0;
 let reviewFilter = 'pending';
 let editingImageId = null;
 let participantQuery = '';
+let noteFilter = 'pending';
 // Photos queued in the "Add photos" tab: [{ id, file, preview, title, description }]
 let uploadQueue = [];
 let uploadCredit = 'ArtUP';
@@ -74,7 +75,7 @@ function render() {
         ${navItem('upload', 'Add photos', uploadQueue.length)}
         ${navItem('rankings', 'Rankings')}
         ${navItem('participants', 'Participants', Store.pendingParticipants().length, true)}
-        ${navItem('notes', 'Voter notes', Store.allNotes().length)}
+        ${navItem('notes', 'Voter notes', Store.allNotes().filter((n) => n.noteStatus === 'pending').length, true)}
         ${navItem('notices', 'Notices')}
         ${navItem('feedback', 'Feedback', Store.state.feedback.filter((f) => f.status === 'open').length, true)}
         ${navItem('exports', 'Exports')}
@@ -353,15 +354,35 @@ function accessCell(p) {
   return `<span style="color:#A6842C;">Pending</span>`;
 }
 
-// What voters wrote when they chose "Note +3" on a photo.
+// What voters wrote when they chose "Note +3" on a photo. Approved notes show
+// under the photo in the app as "Anonymous"; notes written before sharing
+// existed stay private because their writers never agreed to it.
+const NOTE_FILTERS = [
+  ['pending', 'Waiting'], ['approved', 'Shown'], ['rejected', 'Hidden'], ['private', 'Private (older)'],
+];
 function notesTab() {
-  const notes = Store.allNotes();
+  const all = Store.allNotes();
+  const notes = all.filter((n) => n.noteStatus === noteFilter);
+  const pill = 'height:32px; padding:0 16px; border-radius:16px; border:1px solid rgba(27,25,22,.16); background:none; font-size:10.5px; letter-spacing:.10em; text-transform:uppercase; color:#4A443A; cursor:pointer;';
+  const actions = (n) => {
+    const key = `${n.participantId}:${n.imageId}`;
+    if (n.noteStatus === 'private') return '';
+    return `<div style="display:flex; gap:8px; margin-top:12px;">
+      ${n.noteStatus !== 'approved' ? `<button data-note="${key}:approved" style="${pill} background:#2E6B5C; color:#FFFDF8; border:none;">Approve &amp; show</button>` : ''}
+      ${n.noteStatus !== 'rejected' ? `<button data-note="${key}:rejected" style="${pill} color:#C4543A; border-color:rgba(196,84,58,.4);">${n.noteStatus === 'approved' ? 'Hide' : 'Reject'}</button>` : ''}
+    </div>`;
+  };
   return `
     <div class="admin-header">
       <div><p class="eyebrow">From the voting cards</p><h3>Voter notes</h3></div>
-      <span class="chip">${notes.length} note${notes.length === 1 ? '' : 's'}</span>
+      <div style="display:flex; align-items:center; gap:10px;">
+        ${NOTE_FILTERS.map(([key, label]) => `<span class="chip ${noteFilter === key ? 'solid' : ''}" data-note-filter="${key}" style="cursor:pointer;">${label} ${all.filter((n) => n.noteStatus === key).length}</span>`).join('')}
+      </div>
     </div>
-    <div style="padding:20px 32px 32px; display:grid; gap:12px;">
+    <p style="margin:18px 32px 0; max-width:680px; font-size:13px; font-weight:300; line-height:1.6; color:#6E6659;">${noteFilter === 'private'
+      ? 'These were written before notes could be shared, so they stay private. Only admins can see them.'
+      : 'Approved notes appear under the photo on the voting card for everyone, labelled “Anonymous”. The writer’s name is never shown.'}</p>
+    <div style="padding:16px 32px 32px; display:grid; gap:12px;">
       ${notes.length ? notes.map((n) => `
         <div class="card" style="display:grid; grid-template-columns:96px 1fr; gap:18px; padding:14px; align-items:start;">
           <a href="${esc(n.image?.photo || '')}" target="_blank" rel="noopener"><div style="width:96px; aspect-ratio:1.3; border-radius:8px; ${photoStyle(n.image?.photo)}"></div></a>
@@ -369,8 +390,9 @@ function notesTab() {
             <p style="margin:0 0 6px; font-size:12px; font-weight:300; color:#8C8375;">On <span style="color:#1B1916; font-weight:400;">${esc(n.image?.title || 'a removed photo')}</span>${n.image?.credit ? ` by ${esc(n.image.credit)}` : ''}</p>
             <p style="margin:0 0 10px; font-size:14px; font-weight:300; line-height:1.65; color:#26231E; white-space:pre-wrap;">${esc(n.note)}</p>
             <p style="margin:0; font-size:11.5px; font-weight:300; color:#8C8375;">${esc(n.author?.name || 'Unknown')}${n.author?.email ? ` · ${esc(n.author.email)}` : ''} · ${new Date(n.votedAt).toLocaleString()}</p>
+            ${actions(n)}
           </div>
-        </div>`).join('') : '<p style="color:#8C8375; text-align:center; padding:40px;">No notes yet. They show up here when voters tap “Note +3” on a photo.</p>'}
+        </div>`).join('') : `<p style="color:#8C8375; text-align:center; padding:40px;">${noteFilter === 'pending' ? 'No notes waiting. New ones show up here when voters tap “Note +3”.' : 'Nothing here.'}</p>`}
     </div>`;
 }
 
@@ -629,6 +651,15 @@ function wireEvents() {
     const [id, access] = el.dataset.access.split(':');
     if (access !== 'approved') return act(e.currentTarget, '…', () => Store.setParticipantAccess(id, access), 'Participant rejected.');
     if (await act(e.currentTarget, '…', () => Store.setParticipantAccess(id, access))) emailApproval(id, 'Approved');
+  }));
+  root.querySelectorAll('[data-note-filter]').forEach((el) => el.addEventListener('click', () => {
+    noteFilter = el.dataset.noteFilter;
+    render();
+  }));
+  root.querySelectorAll('[data-note]').forEach((el) => el.addEventListener('click', (e) => {
+    const [participantId, imageId, status] = el.dataset.note.split(':');
+    act(e.currentTarget, '…', () => Store.setNoteStatus(participantId, imageId, status),
+      status === 'approved' ? 'Note approved. It now shows under the photo as “Anonymous”.' : 'Note hidden.');
   }));
   root.querySelectorAll('[data-approval-email]').forEach((el) => el.addEventListener('click', () => {
     emailApproval(el.dataset.approvalEmail, 'Still approved');
