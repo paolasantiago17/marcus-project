@@ -143,6 +143,10 @@ end $$;
 create or replace function public.current_terms_version() returns text
 language sql immutable as $$ select '2026-09-16'::text $$;
 
+-- Same thing under the singular name, in case anything older calls it that.
+create or replace function public.current_term_version() returns text
+language sql immutable as $$ select public.current_terms_version() $$;
+
 -- A registered participant who has accepted the current terms (FR-004) and
 -- whose access is approved. Everything but accepting terms and deleting your
 -- data goes through this.
@@ -340,7 +344,6 @@ begin
   if p_value = 'note' and btrim(coalesce(p_note, '')) = '' then raise exception 'A note needs some text'; end if;
   select * into v_img from public.images where id = p_image;
   if v_img.id is null or v_img.status <> 'accepted' then raise exception 'That image is not open for voting'; end if;
-  if v_img.participant_id = p.id then raise exception 'You cannot vote on your own photo'; end if;
 
   insert into public.votes (participant_id, image_id, value, note, note_status)
   values (p.id, p_image, p_value, coalesce(btrim(p_note), ''),

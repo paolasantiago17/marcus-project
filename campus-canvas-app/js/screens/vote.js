@@ -48,7 +48,7 @@ export function vote(root) {
       </div>
 
       <div class="scroll" style="padding:0 22px;">
-        ${celebrating ? celebrationHTML(p) : finished ? finishedHTML() : voting ? votingHTML(current, queue.length) : ''}
+        ${celebrating ? celebrationHTML(p) : finished ? finishedHTML() : voting ? votingHTML(current, queue.length, current.participantId === p.id) : ''}
       </div>
 
       <div style="padding:14px 22px 0;">
@@ -111,12 +111,13 @@ export function vote(root) {
   }
 }
 
-function votingHTML(img, remaining) {
+function votingHTML(img, remaining, mine) {
   return `
     <div id="vote-card" class="vote-card" style="border-radius:20px; overflow:hidden; background:#FFFFFF; box-shadow:0 18px 40px rgba(27,25,22,.13);">
       <div class="vote-photo-wrap" style="position:relative;">
         <div class="vote-photo" style="width:100%; aspect-ratio:1.42; background-color:#EDE6D8; ${photoStyle(img.photo)} display:block;"></div>
         <div style="position:absolute; left:14px; top:14px; height:28px; padding:0 12px; border-radius:14px; background:rgba(27,25,22,.62); backdrop-filter:blur(6px); display:flex; align-items:center; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:#F3EEE3;">${remaining} left</div>
+        ${mine ? `<div style="position:absolute; right:14px; top:14px; height:28px; padding:0 12px; border-radius:14px; background:#A6842C; display:flex; align-items:center; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:#FFFDF8;">Your photo</div>` : ''}
       </div>
       <div style="padding:18px 20px 20px;">
         <p class="h-serif" style="font-size:21px; line-height:1.25; margin-bottom:4px;">${esc(img.title)}</p>

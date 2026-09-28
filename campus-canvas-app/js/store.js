@@ -492,9 +492,11 @@ export const Store = {
     return new Set(state.votes.filter((v) => v.participantId === participantId).map((v) => v.imageId));
   },
 
+  // Every accepted photo, the participant's own included, that they haven't
+  // voted on yet.
   votingQueue(participantId = state.currentParticipantId) {
     const voted = this.votedImageIds(participantId);
-    return this.acceptedImages().filter((img) => !voted.has(img.id) && img.participantId !== participantId);
+    return this.acceptedImages().filter((img) => !voted.has(img.id));
   },
 
   // Optimistic: the card advances and points move immediately; the server's
@@ -530,11 +532,10 @@ export const Store = {
       .map((v) => ({ ...v, image: state.images[v.imageId] }));
   },
 
-  // Everything the current participant can vote on (all accepted photos
-  // except their own), voted or not.
+  // Everything the current participant can vote on (every accepted photo,
+  // their own included), voted or not.
   votablePhotos() {
-    const id = state.currentParticipantId;
-    return this.acceptedImages().filter((img) => img.participantId !== id);
+    return this.acceptedImages();
   },
 
   // Approved notes on a photo, shown to everyone without a name.
