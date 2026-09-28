@@ -330,6 +330,16 @@ export const Store = {
     return this.currentParticipant();
   },
 
+  // Leaves this browser as a fresh visitor. The account itself stays; the
+  // student gets back in with a log-in link to the same email.
+  async signOut() {
+    await sb.auth.signOut();
+    const { error } = await sb.auth.signInAnonymously();
+    if (error) throw new Error(`Could not start a new session: ${error.message}`);
+    await loadStudent();
+    changed();
+  },
+
   takeLoginResult() {
     const r = loginResult;
     loginResult = null;

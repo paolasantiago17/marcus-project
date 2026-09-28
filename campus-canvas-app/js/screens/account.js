@@ -62,12 +62,27 @@ export function account(root) {
           <div data-nav="#/feedback" class="acct-row"><span>Send feedback</span><span style="color:#8C8375;">&rarr;</span></div>
           <div data-nav="#/terms" class="acct-row"><span>Terms of Use</span><span style="font-size:13.5px; color:${p.termsVersion === Store.TERMS_VERSION ? '#8C8375' : '#C4543A'};">${p.termsVersion === Store.TERMS_VERSION ? 'Accepted' : p.termsVersion ? 'Updated' : 'Not accepted'} &rarr;</span></div>
           <div class="acct-row"><span>Privacy</span><span style="color:#8C8375;">&rarr;</span></div>
+          <div id="sign-out" class="acct-row" style="cursor:pointer;"><span>Log out</span><span style="color:#8C8375;">&rarr;</span></div>
           <div id="delete-data" class="acct-row" style="color:#C4543A; cursor:pointer;"><span>Delete my data</span><span>&rarr;</span></div>
         </div>
         <p style="margin:24px 0 26px; font-size:13px; font-weight:300; line-height:1.7; color:#8C8375;">ArtUP Campus Canvas · Queen's University 2027 pilot · Build 1.0.4</p>
       </div>
     </div>
     <style>.acct-row{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid rgba(27,25,22,.07);font-size:16px;font-weight:300;cursor:pointer;}</style>`;
+
+  root.querySelector('#sign-out').addEventListener('click', async (e) => {
+    if (!confirm(`Log out of Campus Canvas? You can log back in any time with ${p.email}.`)) return;
+    busy(e.currentTarget, '<span>Logging out…</span>');
+    try {
+      await Store.signOut();
+    } catch (err) {
+      toast(err.message, 3200);
+      account(root);
+      return;
+    }
+    toast('You’re logged out.');
+    Router.go('#/');
+  });
 
   root.querySelector('#delete-data').addEventListener('click', async (e) => {
     if (!confirm('Delete your Campus Canvas data? This permanently removes your registration, submitted photos, votes and feedback.')) return;
