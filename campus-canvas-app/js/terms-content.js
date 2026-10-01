@@ -27,7 +27,7 @@ export const TERMS_BLOCKS = [
   ],
   [
     "strong",
-    "The Services are operated by [LEGAL ENTITY NAME], carrying on business as ArtUP (“ArtUP,” “we,” “us,” or “our”)."
+    "The Services are operated by ArtUP Life Inc., carrying on business as ArtUP (“ArtUP,” “we,” “us,” or “our”)."
   ],
   [
     "p",
@@ -703,19 +703,15 @@ export const TERMS_BLOCKS = [
   ],
   [
     "p",
-    "[LEGAL ENTITY NAME]"
+    "ArtUP Life Inc."
   ],
   [
     "p",
-    "[MAILING ADDRESS]"
+    "Toronto, Ontario"
   ],
   [
     "p",
-    "Ontario, Canada"
-  ],
-  [
-    "p",
-    "Email: [LEGAL / SUPPORT EMAIL]"
+    "Email: info@artup.life"
   ]
 ];
 
